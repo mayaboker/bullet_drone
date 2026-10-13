@@ -1,5 +1,6 @@
 """Fixed-step orchestration, with optional wall-clock pacing."""
 
+from collections.abc import Callable
 import time
 
 from loguru import logger
@@ -13,10 +14,13 @@ class SimulationRunner:
         self, environment: SimulationEnvironment, max_steps: int,
         pace_wall_time: bool = False,
         command_provider: CommandProvider | None = None,
+        stop_when: Callable[[DroneObservation], bool] | None = None,
     ) -> DroneObservation:
         try:
             if type(max_steps) is not int or max_steps <= 0:
                 raise ValueError("max_steps must be a positive integer")
+            if stop_when is not None and not callable(stop_when):
+                raise ValueError("stop_when must be callable")
             observation = environment.reset()
             if command_provider is not None:
                 command_provider.reset(observation)
@@ -30,6 +34,8 @@ class SimulationRunner:
                     remaining = start + observation.ground_truth.simulation_time_s - time.monotonic()
                     if remaining > 0:
                         time.sleep(remaining)
+                if stop_when is not None and stop_when(observation):
+                    break
         except BaseException:
             # Attempt every cleanup; preserve the original failure/interrupt.
             for resource in (command_provider, environment):

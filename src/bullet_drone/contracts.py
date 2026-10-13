@@ -2,7 +2,7 @@
 
 from typing import Protocol
 
-from bullet_drone.commands import HighLevelCommand, RotorCommand, WrenchCommand
+from bullet_drone.commands import HighLevelCommand, JoystickInput, RotorCommand, WrenchCommand
 from bullet_drone.models import ControlFeedback, DroneObservation, DroneState, PropellerOutput, RotorSpeeds
 
 
@@ -60,3 +60,9 @@ class PropellerModel(Protocol):
     """Actual rad/s to body-frame forces and reaction torque; no integration."""
 
     def calculate(self, speeds_rad_s: RotorSpeeds) -> PropellerOutput: ...
+
+
+class JoystickInterface(HighLevelController, Protocol):
+    """Software control input in SI units, translated to episode-scoped commands."""
+
+    def set_input(self, value: JoystickInput) -> None: ...

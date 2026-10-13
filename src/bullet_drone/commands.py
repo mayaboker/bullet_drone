@@ -84,15 +84,18 @@ class MotorAllocation:
 
 @dataclass(frozen=True, slots=True)
 class HighLevelCommand:
-    """Angle: ZYX orientation radians; Acro: body rates rad/s. Collective in N."""
+    """Angle: ZYX radians; Acro: body rad/s. Collective N; disarm gates motors."""
 
     mode: str
     rpy: Vector3
     thrust_n: float
     episode_id: str
     step_index: int
+    armed: bool = True
 
     def __post_init__(self) -> None:
+        if type(self.armed) is not bool:
+            raise InvalidCommandError("armed must be a boolean")
         if not isinstance(self.mode, str) or self.mode not in ("angle", "acro"):
             raise InvalidCommandError("Control mode must be 'angle' or 'acro'")
         object.__setattr__(self, "rpy", _values(self.rpy, 3, "rpy"))
@@ -102,3 +105,18 @@ class HighLevelCommand:
     def validate_for(self, episode_id: str, next_step: int) -> None:
         if self.episode_id != episode_id or self.step_index != next_step:
             raise InvalidCommandError("High-level command is stale or belongs to another episode/step")
+
+
+@dataclass(frozen=True, slots=True)
+class JoystickInput:
+    """SI joystick input: Angle radians or Acro rad/s; collective N, arm gate."""
+
+    mode: str = "angle"
+    rpy: Vector3 = (0.0, 0.0, 0.0)
+    thrust_n: float = 0.0
+    armed: bool = False
+
+    def __post_init__(self) -> None:
+        command = HighLevelCommand(self.mode, self.rpy, self.thrust_n, "validation", 1, self.armed)
+        object.__setattr__(self, "rpy", command.rpy)
+        object.__setattr__(self, "thrust_n", command.thrust_n)

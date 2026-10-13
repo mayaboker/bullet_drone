@@ -26,7 +26,7 @@
             "label": "Run hover simulation",
             "type": "process",
             "command": "uv",
-            "args": ["run", "--locked", "bullet-drone", "--config", "configs/hover.yaml"],
+            "args": ["run", "--locked", "examples/hover/main.py"],
             "options": {"cwd": "${workspaceFolder}"},
             "problemMatcher": [],
             "presentation": {"reveal": "always", "panel": "dedicated", "clear": true}

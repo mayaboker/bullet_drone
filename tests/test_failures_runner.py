@@ -110,3 +110,28 @@ def test_both_cleanup_failures_preserve_primary_failure():
         SimulationRunner().run(env, 1, command_provider=provider)
     env.close.assert_called_once()
     provider.close.assert_called_once()
+
+
+def test_stop_predicate_receives_completed_observations_and_closes_resources():
+    env, provider = Mock(), Mock()
+    env.reset.return_value = observation(0)
+    env.step.side_effect = [observation(1), observation(2), observation(3)]
+    stop = Mock(side_effect=[False, True])
+    result = SimulationRunner().run(env, 5, command_provider=provider, stop_when=stop)
+    assert result == observation(2)
+    assert [call.args[0] for call in stop.call_args_list] == [observation(1), observation(2)]
+    assert env.step.call_count == 2
+    provider.close.assert_called_once()
+    env.close.assert_called_once()
+
+
+@pytest.mark.parametrize('failure', [RuntimeError('stop failed'), KeyboardInterrupt()])
+def test_stop_predicate_failure_preserves_failure_and_closes_resources(failure):
+    env, provider = Mock(), Mock()
+    env.reset.return_value = observation(0)
+    env.step.return_value = observation(1)
+    stop = Mock(side_effect=failure)
+    with pytest.raises(type(failure)):
+        SimulationRunner().run(env, 5, command_provider=provider, stop_when=stop)
+    provider.close.assert_called_once()
+    env.close.assert_called_once()

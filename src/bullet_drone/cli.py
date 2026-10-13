@@ -22,7 +22,7 @@ class CliParser:
                 type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True, path_type=Path),
                 help="Path to the simulation YAML configuration.",
             )],
-            help="Run a gravity or ideal-hover drone simulation in GUI or headless mode.",
+            help="Run a drone simulation in GUI or headless mode.",
         )
 
     def parse(self, argv: Sequence[str] | None = None) -> CliOptions | int:

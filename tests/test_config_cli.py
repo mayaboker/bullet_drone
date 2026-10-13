@@ -93,9 +93,18 @@ def test_main_import_has_no_startup_side_effects():
             "from loguru import logger; "
             "logger.add = logger.remove = lambda *a, **kw: (_ for _ in ()).throw(AssertionError('logging configured')); "
             "import bullet_drone.main; import sys; "
-            "assert 'pybullet' not in sys.modules"
+            "assert 'pybullet' not in sys.modules; assert not any(name == 'examples' or name.startswith('examples.') for name in sys.modules)"
         )], capture_output=True, text=True, timeout=10,
     )
     assert result.returncode == 0, result.stderr
     assert result.stdout == ""
     assert result.stderr == ""
+
+
+
+def test_simulation_config_rejects_legacy_flight_scenario(tmp_path):
+    data = valid_data()
+    assert not hasattr(YamlConfigLoader().load(write_config(tmp_path, data)), "flight")
+    data["flight"] = {"mode": "hover"}
+    with pytest.raises(ConfigurationError, match="unknown keys: flight"):
+        YamlConfigLoader().load(write_config(tmp_path, data))

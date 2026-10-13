@@ -7,20 +7,19 @@ Milestone: **Mixer and ideal rotor forces, following gravity-only simulation**
 
 ## Goal and boundaries
 
-Demonstrate open-loop hover using requested total thrust and body torque, a bounded motor mixer, and independent rotor thrust/reaction torque models. Preserve gravity-only runs and the existing `DroneObservation` API. The demo starts level and stationary; it is not a feedback controller and does not reject disturbances.
+Verify ideal hover as a physics equilibrium using requested total thrust and body torque, a bounded motor mixer, and independent rotor thrust/reaction torque models. Preserve gravity-only runs and the existing `DroneObservation` API. Equilibrium checks start level and stationary and do not imply disturbance rejection.
 
 Each physical effect has its own named method or focused module and independent verification. Mixing requests actuator output; it does not calculate the net force after gravity and drag. The physics adapter applies forces and lets PyBullet integrate the body.
 
-The [internal flight-control milestone](internal-flight-control.md) subsequently adds API-only stabilization and extracts injectable ideal motor dynamics and a propeller model. The open-loop demonstration below retains its behavior.
+The [internal flight-control milestone](internal-flight-control.md) subsequently adds API-only stabilization and extracts injectable ideal motor dynamics and a propeller model. The standalone open-loop demonstration has been removed; direct mixer/rotor-command tests retain equilibrium verification, while the supported hover example uses altitude feedback.
 
 ## Component diagram
 
 ```mermaid
 flowchart LR
-    Main["main.py"] --> Provider["HoverCommandProvider\nT = mg, body torque = 0"]
-    Vehicle["VehicleParameters\nGeometry, coefficients, limits"] --> Mixer["MotorMixer"]
-    Mixer --> Provider
-    Provider -->|Episode-scoped RotorCommand| Runner["Simulation runner"]
+    Caller["Caller / physics verification"] -->|WrenchCommand| Mixer["MotorMixer"]
+    Vehicle["VehicleParameters\nGeometry, coefficients, limits"] --> Mixer
+    Mixer -->|Episode-scoped RotorCommand| Runner["Simulation runner"]
     Runner --> Env["Drone environment"]
     Env --> Physics["PyBullet adapter"]
     Physics --> Thrust["RotorThrustModel"]
@@ -34,12 +33,12 @@ flowchart LR
 
 ## Interfaces and ownership
 
-- `VehicleParameters` stores four rotor positions, body-reaction yaw signs, thrust/torque coefficients, and fixed motor capacity. `main.py` reads the bundled racer once and injects the same parameters into mixer and backend.
+- `VehicleParameters` stores four rotor positions, body-reaction yaw signs, thrust/torque coefficients, and fixed motor capacity. Composition code reads the bundled racer once and injects the same parameters into mixer and backend.
 - `WrenchCommand` contains nonnegative collective thrust in N and body-frame roll/pitch/yaw torque in N·m.
 - `MotorMixer.mix()` returns `MotorAllocation`: requested and achieved wrench, four rotor thrusts and speeds, torque scaling, and saturation status.
 - `RotorCommand` contains four speeds in rad/s ordered prop0–prop3, episode identity, and the intended next step index.
 - Environment and physics `step()` accept a rotor command or `None`. `None` means zero target speeds for that step, not holding the last command. Ideal motors stop immediately; injected motor dynamics determine actual speeds. Rejected commands do not advance physics or invalidate an otherwise ready episode.
-- The runner accepts an optional `CommandProvider`. The hover provider associates its constant allocation with the current observation's episode and next step. Command-provider failures follow the same cleanup path as backend failures.
+- The runner accepts an optional `CommandProvider`. Callers associate allocated rotor commands with the current episode and next step. Command-provider failures follow the same cleanup path as backend failures.
 - Ground truth includes `rotor_speeds_rad_s`. Reset sets speeds to zero; ideal motors change speed instantaneously on a successful commanded step. Sensor fields remain empty.
 
 ## Racer geometry and units
@@ -70,7 +69,7 @@ The mixer requires four identical actuators, balanced horizontal geometry and ya
 
 First clamp collective thrust to total capacity and divide it equally. Solve for zero-sum torque corrections, then uniformly scale those corrections until all rotor thrusts are between zero and capacity. This preserves the feasible collective request and reduces requested torque consistently. Return the actually achieved wrench and whether saturation occurred. At zero or maximum collective there may be no torque headroom.
 
-Convert each feasible rotor thrust to speed with `ω = sqrt(f / k_f)`. Reject invalid numerical requests, malformed rotor commands, excessive speeds, and commands for another episode or step before applying forces. A saturated hover request is reported once by `main.py`; it does not silently claim that an overweight vehicle can hover.
+Convert each feasible rotor thrust to speed with `ω = sqrt(f / k_f)`. Reject invalid numerical requests, malformed rotor commands, excessive speeds, and commands for another episode or step before applying forces. Allocation reports saturated requests and achieved output; it does not silently claim that an overweight vehicle can hover.
 
 ## Force calculation and application
 
@@ -80,14 +79,16 @@ Convert each feasible rotor thrust to speed with `ω = sqrt(f / k_f)`. Reject in
 
 ## Configuration and execution
 
-Optional `flight.mode` is `gravity` by default, or `hover`. Existing YAML remains valid. Hover requires downward vertical gravity and requests `T = mass × |gravity_z|` with zero torque.
+The main CLI runs the reusable simulation. Hover is demonstrated through altitude feedback in the [hover example](altitude-hover-demo.md):
 
 ```bash
-uv run --locked bullet-drone --config configs/hover.yaml
-uv run --locked bullet-drone --config configs/hover-headless.yaml
+uv run examples/hover/main.py
+uv run examples/hover/main.py --headless
 ```
 
-VS Code's **Run hover simulation** task uses the GUI example. GUI mode uses existing wall-time pacing; headless mode is unpaced. Both examples run 1,200 steps over five simulated seconds. With mass 1 kg and gravity 9.81 m/s², hover requires 2.4525 N per rotor, approximately 1,781.933 rad/s (17,016 RPM).
+The former standalone open-loop provider, entry point, and sample YAML were removed. The old `flight.mode` field is unsupported; remove the `flight` section from older simulation YAML. VS Code's **Run hover simulation** task runs the altitude-controlled example.
+
+Independent physics tests still allocate `T = mass × |gravity_z|` with zero torque to verify ideal equilibrium. At mass 1 kg and gravity 9.81 m/s², this requires 2.4525 N per rotor, approximately 1,781.933 rad/s (17,016 RPM).
 
 ## Verification
 
@@ -116,4 +117,4 @@ The final physics scope follows the [course's force inventory](https://github.co
 | Ground effect | Pending | Surface-dependent rotor thrust modification. |
 | Prop wash / induced airflow | Pending, advanced | Local airflow shared by interacting rotors/vehicles. |
 
-KV, voltage sag, motor lag, drag, and advanced aerodynamics remain future work. Internal attitude/rate feedback control is implemented in the subsequent stabilization milestone; high-level hover control remains future work. KV is not a thrust coefficient, and aerodynamic resistance to rotor spinning must not be confused with translational drag on the drone.
+KV, voltage sag, motor lag, drag, and advanced aerodynamics remain future work. Internal attitude/rate feedback control is implemented in the subsequent stabilization milestone; the subsequent [altitude demo](altitude-hover-demo.md) implements high-level takeoff, altitude hold, landing, and disarm through a software joystick. KV is not a thrust coefficient, and aerodynamic resistance to rotor spinning must not be confused with translational drag on the drone.

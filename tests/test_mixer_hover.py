@@ -1,13 +1,11 @@
 from dataclasses import replace
 from math import pi, sqrt
-from pathlib import Path
 
 import pybullet as p
 import pytest
 
 from bullet_drone.commands import InvalidCommandError, RotorCommand, WrenchCommand
-from bullet_drone.config import ConfigurationError, FlightSettings, YamlConfigLoader
-from bullet_drone.control import HoverCommandProvider
+from bullet_drone.config import ConfigurationError
 from bullet_drone.environment import DroneEnvironment
 from bullet_drone.forces.reaction_torque import ReactionTorqueModel
 from bullet_drone.forces.thrust import RotorThrustModel
@@ -93,20 +91,21 @@ def test_uncontrollable_geometry_rejected():
 
 def test_hover_every_step_and_reset_stops_motors(config):
     vehicle = load_racer_parameters()
-    provider = HoverCommandProvider(MotorMixer(vehicle), config.drone.mass_kg, config.simulation.gravity_m_s2)
+    allocation = MotorMixer(vehicle).mix(WrenchCommand(config.drone.mass_kg * -config.simulation.gravity_m_s2[2]))
     physics = PyBulletPhysics(config, vehicle)
     env = DroneEnvironment(physics)
     try:
         observation = env.reset()
         assert observation.ground_truth.rotor_speeds_rad_s == (0, 0, 0, 0)
         for _ in range(1200):
-            observation = env.step(provider.command(observation))
+            state = observation.ground_truth
+            observation = env.step(RotorCommand(allocation.speeds_rad_s, state.episode_id, state.step_index + 1))
             assert observation.ground_truth.position_m == pytest.approx((0, 0, 1), abs=0.001)
         state = observation.ground_truth
         assert state.simulation_time_s == 5
         assert state.orientation_xyzw == pytest.approx((0, 0, 0, 1), abs=1e-8)
         assert state.linear_velocity_m_s == pytest.approx((0, 0, 0), abs=1e-8)
-        assert state.rotor_speeds_rad_s == provider.allocation.speeds_rad_s
+        assert state.rotor_speeds_rad_s == allocation.speeds_rad_s
         reset = env.reset()
         assert reset.ground_truth.rotor_speeds_rad_s == (0, 0, 0, 0)
         assert env.step().ground_truth.position_m[2] < 1
@@ -118,9 +117,15 @@ def test_hover_every_step_and_reset_stops_motors(config):
 def test_mass_changes_hover_speed_but_not_motor_capacity(config, mass):
     vehicle = load_racer_parameters()
     config = replace(config, drone=replace(config.drone, mass_kg=mass))
-    provider = HoverCommandProvider(MotorMixer(vehicle), mass, config.simulation.gravity_m_s2)
-    assert provider.allocation.speeds_rad_s == pytest.approx([1781.9332057019024 * sqrt(mass)] * 4)
-    state = SimulationRunner().run(DroneEnvironment(PyBulletPhysics(config, vehicle)), 1200, command_provider=provider).ground_truth
+    allocation = MotorMixer(vehicle).mix(WrenchCommand(mass * -config.simulation.gravity_m_s2[2]))
+    assert allocation.speeds_rad_s == pytest.approx([1781.9332057019024 * sqrt(mass)] * 4)
+    env = DroneEnvironment(PyBulletPhysics(config, vehicle))
+    try:
+        state = env.reset().ground_truth
+        for _ in range(1200):
+            state = env.step(RotorCommand(allocation.speeds_rad_s, state.episode_id, state.step_index + 1)).ground_truth
+    finally:
+        env.close()
     assert state.position_m[2] == pytest.approx(1, abs=0.001)
     assert vehicle.max_thrust_per_rotor_n == pytest.approx(0.830 * 9.81 * 4.17 / 4)
 
@@ -190,30 +195,15 @@ def test_invalid_commands_never_apply_forces_or_invalidate_episode(config, monke
         env.close()
 
 
-def test_config_hover_and_gravity_compatibility(tmp_path):
-    assert YamlConfigLoader().load("configs/basic.yaml").flight.mode == "gravity"
-    assert YamlConfigLoader().load("configs/hover.yaml").flight.mode == "hover"
-    for mode in ("bad", True, ["hover"]):
-        with pytest.raises(ConfigurationError):
-            FlightSettings(mode)
-    path = tmp_path / "bad-hover.yaml"
-    text = Path("configs/hover-headless.yaml").read_text()
-    for gravity in ("[0, 0, 0]", "[1, 0, -9.81]", "[0, 0, 9.81]"):
-        path.write_text(text.replace("[0.0, 0.0, -9.81]", gravity))
-        with pytest.raises(ConfigurationError, match="downward vertical"):
-            YamlConfigLoader().load(path)
-
-
 def test_force_application_failure_closes_backend(config, monkeypatch):
     vehicle = load_racer_parameters()
     physics = PyBulletPhysics(config, vehicle)
     def fail(*args, **kwargs):
         raise p.error("injected force application failure")
     monkeypatch.setattr(p, "applyExternalForce", fail)
-    provider = HoverCommandProvider(MotorMixer(vehicle), 1, (0, 0, -9.81))
     from bullet_drone.contracts import BackendError, LifecycleError
     with pytest.raises(BackendError, match="force application failure"):
-        SimulationRunner().run(DroneEnvironment(physics), 2, command_provider=provider)
+        SimulationRunner().run(DroneEnvironment(physics), 2)
     assert physics._client is None
     with pytest.raises(LifecycleError):
         physics.step()

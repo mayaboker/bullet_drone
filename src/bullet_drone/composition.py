@@ -35,6 +35,7 @@ class FlightCommandProvider:
         self._episode_id: str | None = None
         self._next_step = 0
         self._closed = False
+        self._armed: bool | None = None
         self.allocation = None
 
     def reset(self, observation: DroneObservation) -> None:
@@ -42,6 +43,7 @@ class FlightCommandProvider:
             raise LifecycleError("Cannot reset a closed command provider")
         self._episode_id = None
         self.allocation = None
+        self._armed = None
         self._controller.reset()
         self._source.reset(observation)
         state = observation.ground_truth
@@ -65,13 +67,21 @@ class FlightCommandProvider:
             self._episode_id = None
             raise
         try:
-            feedback = self._feedback.read(observation)
-            wrench = self._controller.update(command, feedback, self._dt_s)
-            allocation = self._mixer.mix(wrench)
-            result = RotorCommand(allocation.speeds_rad_s, state.episode_id, state.step_index + 1)
+            if command.armed != self._armed:
+                self._controller.reset()
+            if command.armed:
+                feedback = self._feedback.read(observation)
+                wrench = self._controller.update(command, feedback, self._dt_s)
+                allocation = self._mixer.mix(wrench)
+                speeds = allocation.speeds_rad_s
+            else:
+                allocation = None
+                speeds = (0.0, 0.0, 0.0, 0.0)
+            result = RotorCommand(speeds, state.episode_id, state.step_index + 1)
         except BaseException:
             self._episode_id = None
             raise
+        self._armed = command.armed
         self.allocation = allocation
         self._next_step += 1
         return result

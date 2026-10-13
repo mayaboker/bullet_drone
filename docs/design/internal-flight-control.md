@@ -28,7 +28,7 @@ flowchart LR
     Step -->|DroneObservation| Source
 ```
 
-The CLI still runs gravity or the existing open-loop hover demonstration. The new stabilization path is API-only. No high-level hover controller, joystick, ADRC, Godot renderer, or Betaflight transport is implemented.
+The main CLI runs the reusable simulation; the altitude-controlled hover demonstration lives in `examples/hover`. The stabilization path is composed through the Python API. The subsequent [altitude demo](altitude-hover-demo.md) adds a software joystick and high-level takeoff/hover/landing mission through a separate example entry point. ADRC, Godot rendering, and Betaflight transport remain future work.
 
 ## Selection and composition
 
@@ -57,11 +57,11 @@ final = SimulationRunner().run(
 )
 ```
 
-Import the factory from `bullet_drone.composition`, controller settings from `bullet_drone.controllers`, and `HighLevelCommand` from `bullet_drone.commands`. Use the same configured timestep for provider and physics. The source is responsible for producing the command for the observation's episode and next step. Only test fixtures supply a fixed high-level source in this milestone.
+Import the factory from `bullet_drone.composition`, controller settings from `bullet_drone.controllers`, and `HighLevelCommand` from `bullet_drone.commands`. Use the same configured timestep for provider and physics. The source is responsible for producing the command for the observation's episode and next step. The altitude demo supplies a production high-level mission source; test fixtures also supply fixed sources.
 
 ## Commands, frames, and control
 
-`HighLevelCommand(mode, rpy, thrust_n, episode_id, step_index)` is immutable. Values must be finite; thrust cannot be negative. Frames are right-handed: world Z up, body X forward/Y left/Z up. Quaternions are xyzw, mapping body to world.
+`HighLevelCommand(mode, rpy, thrust_n, episode_id, step_index, armed=True)` is immutable. Values must be finite; thrust cannot be negative. The provider validates commands before gating disarmed commands to zero motor targets; arming transitions clear stabilization history. Existing callers remain armed by default. Frames are right-handed: world Z up, body X forward/Y left/Z up. Quaternions are xyzw, mapping body to world.
 
 - `angle`: RPY is body-to-world ZYX Euler orientation in radians, including absolute yaw heading. The attitude controller converts it to a quaternion and computes the shortest body-frame rotation vector. Per-axis P gains map angle error to body rates, limited by `max_rates_rad_s`. Equivalent quaternion signs produce identical errors; exact 180-degree ambiguity uses a deterministic sign.
 - `acro`: RPY is desired body-axis angular velocity in rad/s. It bypasses attitude P and uses the same rate limits and PID loop.
@@ -87,6 +87,6 @@ Inject models through keyword-only `motor_dynamics` and `propeller_model` argume
 
 The runner resets the environment, then the command provider. Provider reset clears controller state and latest allocation and resets the source. Each command must match the current episode/next step; replayed observations and stale commands are rejected before stabilization advances. Invalid source commands can be corrected and retried; component failures during feedback/stabilization/mixing require provider reset. Model failures invalidate the physics episode.
 
-The runner owns closing provider and environment, attempts both even after cleanup failure/interruption, and preserves the original run failure. Repeated provider close is harmless. All providers, including the legacy hover provider, now implement reset/command/close; caller-defined providers must add those lifecycle methods.
+The optional runner `stop_when(observation)` predicate can finish a run after a completed step; predicate failures follow the same cleanup path. The runner owns closing provider and environment, attempts both even after cleanup failure/interruption, and preserves the original run failure. Repeated provider close is harmless. All providers, including the legacy hover provider, now implement reset/command/close; caller-defined providers must add those lifecycle methods.
 
 Tests cover PID equations and anti-windup, selection rejection before acquisition, commands and feedback frames, quaternion wrapping/sign equivalence, Angle/Acro routing, thrust bypass/feedforward/limits, resets/replay, real PyBullet disturbance convergence on all three axes, ideal propeller equations, injected actual motor speeds, model failures/output rejection, and cleanup failures. Existing free-fall, hover, torque magnitude, and CLI checks remain applicable.

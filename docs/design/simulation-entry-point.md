@@ -16,9 +16,11 @@ The environment returns `DroneObservation` from the first milestone, with `groun
 
 This document describes the implemented first milestone. The broader 0.1.0 architecture and later sensor milestone remain planned.
 
-The subsequent [rotor forces and hover milestone](rotor-forces-and-hover.md) is also implemented. The diagrams below retain the basic entry-point structure; current `step()` additionally accepts episode-scoped `RotorCommand` actions, and the runner supports an optional command provider. `None` retains gravity-only behavior. Optional YAML `flight.mode` selects `gravity` (default) or `hover`.
+The subsequent [rotor forces and hover milestone](rotor-forces-and-hover.md) is also implemented. The diagrams below retain the basic entry-point structure; current `step()` additionally accepts episode-scoped `RotorCommand` actions, and the runner supports an optional command provider. `None` retains gravity-only behavior. Hover scenario composition has since moved to `examples/hover`; the standard main CLI sends zero motor targets. The old `FlightSettings`/`flight.mode` interface was removed; older YAML must remove its `flight` section.
 
-The [internal flight-control milestone](internal-flight-control.md) adds optional YAML `control.backend` (default `internal`); selecting `betaflight` raises an unsupported-controller configuration error before acquiring a world, with CLI status 2. Stabilization is API-only; CLI gravity and open-loop hover remain unchanged. Command providers now implement reset/close, and the runner resets and closes both provider and environment through the documented lifecycle.
+The [internal flight-control milestone](internal-flight-control.md) adds optional YAML `control.backend` (default `internal`); selecting `betaflight` raises an unsupported-controller configuration error before acquiring a world, with CLI status 2. Stabilization is composed through the Python API; the main CLI runs the core simulation and hover example entry points supply their own command providers. Command providers now implement reset/close, and the runner resets and closes both provider and environment through the documented lifecycle.
+
+The subsequent [altitude demo](altitude-hover-demo.md) supplies a separate thin `examples/hover/main.py` entry point through the high-level API. Its optional runner stop predicate finishes the mission after landing/disarm; the standard application CLI retains its existing configured step count and modes.
 
 ## Basic block diagram
 
