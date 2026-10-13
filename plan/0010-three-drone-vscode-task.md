@@ -1,7 +1,7 @@
 # Three-drone VS Code launch task
 
 Status: Completed
-Implementation commit: Pending
+Implementation commit: `869f6b65bb079aa0c8f67dcfcae6947c4b5682e5`
 
 ## Goal and defaults
 
@@ -20,10 +20,10 @@ Validate task JSON/dependencies, profile IDs and command targets. Check CLI forw
 
 ## Scope and status
 
-No changes to physics/control algorithms or UDP schema. All drones take off to world Z=3 m and land/disarm after their 20 s hover. Each publisher owns an independent physics world; inter-drone contacts are not simulated. No commit or push requested.
+No changes to physics/control algorithms or UDP schema. All drones take off to world Z=3 m and land/disarm after their 20 s hover. Each publisher owns an independent physics world; inter-drone contacts are not simulated. Committed at the user’s request; no push requested.
 
 Outcome: Implemented the three independent drone tasks and parallel `Run Godot and 3 drones` group, two unique render profiles and validated initial-world-position CLI/API override. Existing defaults and tasks are retained.
 
 Verification: 217 Python tests passed, including CLI forwarding and invalid initial positions rejected before physics acquisition. Parsed all three task commands through the hover CLI, validated their positions and unique IDs, and checked JSON/dependency references. Ran all three complete missions at the configured offsets: each finished at 33.229 simulated seconds, landed at Z=0.01349 m with motors off, retaining horizontal offsets within 0.000035 m. Whitespace checks passed.
 
-Implementation commit remains Pending; no commit requested.
+Implementation committed as `869f6b65bb079aa0c8f67dcfcae6947c4b5682e5`.
