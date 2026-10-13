@@ -67,7 +67,7 @@ The complete headless run starts hover at about 5.179 s, landing at 25.179 s, an
 
 Tests verify joystick lifecycle/identity/input translation, command validation before disarm, motor gating and rearming reset, altitude direction/weight compensation/capacity/mass scaling, interrupted dwell periods, mission reset, full flight altitude/speed/timing, timeout and interruption cleanup, stop predicates, and entry-point import/help/exit behavior. Existing physics/stabilization/CLI tests remain applicable.
 
-Horizontal position hold, manual device input, noisy sensors, real motor lag, Betaflight, ADRC, and Godot rendering remain future work.
+Horizontal position hold, manual device input, noisy sensors, real motor lag, Betaflight and ADRC remain future work. The example supports [independent Godot rendering](godot-rendering.md) through `--renderer godot`, with DIRECT physics and wall-time pacing.
 
 
 ## Example package boundary

@@ -2,6 +2,8 @@
 
 from collections.abc import Sequence
 import sys
+from dataclasses import replace
+from bullet_drone.rendering.composition import compose_rendering
 
 import click
 from loguru import logger
@@ -32,11 +34,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         config = YamlConfigLoader().load(options.config_path)
         validate_control_backend(config.control)
+        gui, pace, consumers = compose_rendering(options.renderer, options.render_config,
+                                                gui=config.simulation.gui, headless=options.headless)
+        config = replace(config, simulation=replace(config.simulation, gui=gui))
         vehicle = load_racer_parameters()
         environment = DroneEnvironment(PyBulletPhysics(config, vehicle))
         logger.info("Starting {} simulation", "GUI" if config.simulation.gui else "headless")
         observation = SimulationRunner().run(
-            environment, config.simulation.max_steps, pace_wall_time=config.simulation.gui,
+            environment, config.simulation.max_steps, pace_wall_time=pace, consumers=consumers,
         )
         state = observation.ground_truth
         logger.info(

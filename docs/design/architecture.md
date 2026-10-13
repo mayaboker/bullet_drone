@@ -15,7 +15,7 @@ The central architectural goal is to separate physical evolution from visual obs
 
 The first version targets one quadcopter in a configured scene, fixed-step simulation, direct rotor commands, camera rendering, telemetry recording, and plotting. Flight controllers may be supplied by callers through the command interface. High-level autopilots, hardware connections, ROS integration, multiple drones, and advanced aerodynamic models are outside the initial scope.
 
-This document describes the intended overall design. The [entry-point milestone](simulation-entry-point.md) and [ideal rotor/hover milestone](rotor-forces-and-hover.md) are implemented with GUI/headless modes, bounded motor allocation, rotor forces, and immutable observations. The [internal stabilization milestone](internal-flight-control.md) adds API-only Angle/Acro control with ideal state feedback and injectable motor/propeller boundaries. The [altitude demo](altitude-hover-demo.md) adds a software joystick and timed high-level takeoff/hover/landing/disarm source. Hover scenarios, mission sequencing, tuned example gains, and entry points live in `examples/hover`; reusable control and simulation components remain in `src/bullet_drone`, with no library dependency on examples. Motor lag, sensor models, independent rendering, and telemetry consumers remain future work before the complete 0.1.0 scope.
+This document describes the intended overall design. The [entry-point milestone](simulation-entry-point.md) and [ideal rotor/hover milestone](rotor-forces-and-hover.md) are implemented with GUI/headless modes, bounded motor allocation, rotor forces, and immutable observations. The [internal stabilization milestone](internal-flight-control.md) adds API-only Angle/Acro control with ideal state feedback and injectable motor/propeller boundaries. The [altitude demo](altitude-hover-demo.md) adds a software joystick and timed high-level takeoff/hover/landing/disarm source. Hover scenarios, mission sequencing, tuned example gains, and entry points live in `examples/hover`; reusable control and simulation components remain in `src/bullet_drone`, with no library dependency on examples. The [Godot rendering milestone](godot-rendering.md) implements an external UDP viewer and generic observation consumers. Motor lag, sensor models, image-buffer return, and telemetry recording remain future work before the complete 0.1.0 scope.
 
 ## 2. Design principles
 
@@ -139,6 +139,8 @@ Operations are serialized by the owner; the physics interface is not assumed thr
 
 ### Rendering interface
 
+The implemented milestone uses `reset(RenderSnapshot)`, `render(RenderSnapshot)`, and `close()` with a fire-and-forget UDP adapter; Godot owns its visual scene and cameras. See the [current rendering contract](godot-rendering.md). The operations below describe future image-return and general-scene extensions.
+
 | Operation | Input | Output and contract |
 | --- | --- | --- |
 | Initialize scene | Scene definition and camera configuration | Loads visual assets into the renderer's own world. |
@@ -173,7 +175,7 @@ These paths can be combined: a separate render process consumes snapshots, gener
 
 PyBullet documents a headless `DIRECT` connection and camera image generation with its software renderer. Its built-in `GUI` connection places the GUI in the same process. The separate-process design therefore uses an explicitly owned scene mirror rather than assuming the built-in GUI detaches from the physics process. See the [official PyBullet quickstart guide](https://github.com/bulletphysics/bullet3/blob/master/docs/pybullet_quickstart_guide/PyBulletQuickstartGuide.md.html).
 
-The first entry-point milestone also supports PyBullet's built-in GUI as a debug viewer of the authoritative world, selected through `simulation.gui` in YAML. This is an incremental convenience before independent rendering is implemented. The physics API remains the same in GUI and headless modes; a separate renderer and process remain the intended later architecture.
+The first entry-point milestone also supports PyBullet's built-in GUI as a debug viewer of the authoritative world, selected through `simulation.gui` in YAML. It remains available alongside the independent Godot viewer. The physics API remains the same in GUI and headless modes; the implemented Godot process receives immutable world poses over UDP.
 
 Start with the software renderer as the proposed portable baseline. Hardware rendering, platform-specific graphics setup, and performance targets need validation during implementation.
 

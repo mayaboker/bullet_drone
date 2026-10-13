@@ -14,7 +14,7 @@ Keep `DroneState` as the physics output. The environment returns `DroneObservati
 - `ground_truth: DroneState`: exact simulated pose, velocities, time, and step identity.
 - `sensors: SensorReadings`: the latest IMU, barometer, and rangefinder readings, with their own timestamps and validity.
 
-Noise changes sensor readings only. Rendering uses ground truth. Future controllers use sensor readings when evaluating behavior under measurement uncertainty. Recording can save both for comparison. No state estimator or sensor fusion is included in this milestone.
+Noise changes sensor readings only. Rendering independently selects position, altitude and attitude sources; the implemented [rendering contract](godot-rendering.md) defaults to ground truth and rejects sensor selection before resources open until an estimator is implemented. Future controllers use sensor readings when evaluating behavior under measurement uncertainty. Recording can save both for comparison. No state estimator or sensor fusion is included in this milestone.
 
 ## Component diagram
 

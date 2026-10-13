@@ -26,10 +26,70 @@
             "label": "Run hover simulation",
             "type": "process",
             "command": "uv",
-            "args": ["run", "--locked", "examples/hover/main.py"],
-            "options": {"cwd": "${workspaceFolder}"},
+            "args": [
+                "run",
+                "--locked",
+                "examples/hover/main.py"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
             "problemMatcher": [],
-            "presentation": {"reveal": "always", "panel": "dedicated", "clear": true}
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            }
+        },
+        {
+            "label": "Run Godot viewer",
+            "type": "process",
+            "command": "godot",
+            "args": [
+                "--path",
+                "renderers/godot"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            }
+        },
+        {
+            "label": "Run drone with Godot",
+            "type": "process",
+            "command": "uv",
+            "args": [
+                "run",
+                "--locked",
+                "examples/hover/main.py",
+                "--renderer",
+                "godot",
+                "--render-config",
+                "configs/render-godot.yaml"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            }
+        },
+        {
+            "label": "Run Godot and drone",
+            "dependsOn": [
+                "Run Godot viewer",
+                "Run drone with Godot"
+            ],
+            "dependsOrder": "parallel",
+            "problemMatcher": []
         }
     ]
 }

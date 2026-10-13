@@ -5,23 +5,27 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import click
+from bullet_drone.rendering.cli import rendering_options
 
 
 @dataclass(frozen=True, slots=True)
 class CliOptions:
     config_path: Path
+    renderer: str | None = None
+    render_config: Path | None = None
+    headless: bool = False
 
 
 class CliParser:
     def __init__(self) -> None:
         self._command = click.Command(
             "bullet-drone",
-            callback=lambda config: CliOptions(config_path=config),
+            callback=lambda config, renderer, render_config, headless: CliOptions(config, renderer, render_config, headless),
             params=[click.Option(
                 ["--config"], required=True,
                 type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True, path_type=Path),
                 help="Path to the simulation YAML configuration.",
-            )],
+            ), click.Option(["--headless"], is_flag=True)] + rendering_options(),
             help="Run a drone simulation in GUI or headless mode.",
         )
 

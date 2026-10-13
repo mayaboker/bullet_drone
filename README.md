@@ -63,6 +63,27 @@ controller commands the existing internal stabilization through a software
 joystick interface. VS Code’s **Run hover simulation** task runs this example.
 See [the mission, tuning, and API](docs/design/altitude-hover-demo.md).
 
+## Godot FPV viewer
+
+Start Godot 4.3+ separately, then run the hover example:
+
+```bash
+godot --path renderers/godot
+uv run examples/hover/main.py --renderer godot --render-config configs/render-godot.yaml
+```
+
+In VS Code, use **Tasks: Run Task → Run Godot and drone** to start both.
+The **Run Godot viewer** and **Run drone with Godot** tasks also run independently.
+Godot must be available on PATH.
+
+Each camera defaults to 640×480 and 75° vertical FOV. Godot shows a full-window world
+camera with titled drone FPV panels at the top left. Right-drag orbits the world
+view and the mouse wheel zooms; separate publishers need unique `drone_id`
+values in their render profiles. Physics runs in DIRECT mode with wall-time
+pacing. The viewer remains open when the simulation ends.
+Both simulation entry points support `--renderer godot|pybullet|none`.
+See [configuration, coordinate frames and verification](docs/design/godot-rendering.md).
+
 ## Internal control API
 
 Optional YAML `control.backend` defaults to `internal`. Selecting `betaflight`

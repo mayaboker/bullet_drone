@@ -5,7 +5,7 @@ import time
 
 from loguru import logger
 
-from bullet_drone.contracts import CommandProvider, SimulationEnvironment
+from bullet_drone.contracts import CommandProvider, SimulationEnvironment, ObservationConsumer
 from bullet_drone.models import DroneObservation
 
 
@@ -15,6 +15,7 @@ class SimulationRunner:
         pace_wall_time: bool = False,
         command_provider: CommandProvider | None = None,
         stop_when: Callable[[DroneObservation], bool] | None = None,
+        consumers: tuple[ObservationConsumer, ...] = (),
     ) -> DroneObservation:
         try:
             if type(max_steps) is not int or max_steps <= 0:
@@ -24,12 +25,16 @@ class SimulationRunner:
             observation = environment.reset()
             if command_provider is not None:
                 command_provider.reset(observation)
+            for consumer in consumers:
+                consumer.reset(observation)
             start = time.monotonic()
             for _ in range(max_steps):
                 if command_provider is None:
                     observation = environment.step()
                 else:
                     observation = environment.step(command_provider.command(observation))
+                for consumer in consumers:
+                    consumer.consume(observation)
                 if pace_wall_time:
                     remaining = start + observation.ground_truth.simulation_time_s - time.monotonic()
                     if remaining > 0:
@@ -38,7 +43,7 @@ class SimulationRunner:
                     break
         except BaseException:
             # Attempt every cleanup; preserve the original failure/interrupt.
-            for resource in (command_provider, environment):
+            for resource in (*consumers, command_provider, environment):
                 if resource is not None:
                     try:
                         resource.close()
@@ -47,7 +52,7 @@ class SimulationRunner:
             raise
         else:
             failure = None
-            for resource in (command_provider, environment):
+            for resource in (*consumers, command_provider, environment):
                 if resource is not None:
                     try:
                         resource.close()

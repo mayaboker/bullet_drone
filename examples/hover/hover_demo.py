@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from math import ceil
+from bullet_drone.rendering.composition import compose_rendering
 
 from bullet_drone.composition import create_flight_command_provider
 from bullet_drone.config import DroneSettings, SimulationConfig, SimulationSettings, _number
@@ -26,9 +27,11 @@ class HoverDemoResult:
     transitions: tuple[MissionTransition, ...]
 
 
-def run_hover_demo(*, gui: bool = True, max_duration_s: float = 45.0) -> HoverDemoResult:
+def run_hover_demo(*, gui: bool = True, max_duration_s: float = 45.0,
+                   renderer: str | None = None, render_config=None, headless: bool = False) -> HoverDemoResult:
     """Run the fixed ideal-profile example; timeout and failures close resources."""
     duration = _number(max_duration_s, "demo.max_duration_s", positive=True)
+    gui, pace, consumers = compose_rendering(renderer, render_config, gui=gui, headless=headless)
     dt = 1 / 240
     config = SimulationConfig(
         SimulationSettings(dt, ceil(duration / dt), (0.0, 0.0, -9.81), gui),
@@ -49,7 +52,7 @@ def run_hover_demo(*, gui: bool = True, max_duration_s: float = 45.0) -> HoverDe
     provider = create_flight_command_provider(config.control, mission, stabilization, vehicle, dt)
     final = SimulationRunner().run(
         DroneEnvironment(PyBulletPhysics(config, vehicle)), config.simulation.max_steps,
-        pace_wall_time=gui, command_provider=provider,
+        pace_wall_time=pace, command_provider=provider, consumers=consumers,
         stop_when=lambda observation: mission.completed,
     )
     if not mission.completed:

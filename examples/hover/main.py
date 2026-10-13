@@ -31,7 +31,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     logger.remove()
     logger.add(sys.stderr, level="INFO", format="{level}: {message}", diagnose=False)
     try:
-        result = run_hover_demo(gui=not options.headless)
+        if options.renderer is None and options.render_config is None:
+            result = run_hover_demo(gui=not options.headless)
+        else:
+            result = run_hover_demo(gui=not options.headless, renderer=options.renderer,
+                                    render_config=options.render_config, headless=options.headless)
         state = result.observation.ground_truth
         logger.info("Hover demo completed at {:.3f} s; landed and disarmed; final height {:.4f} m",
                     state.simulation_time_s, state.position_m[2])
