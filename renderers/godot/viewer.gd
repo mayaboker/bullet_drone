@@ -1,6 +1,7 @@
 extends Node3D
 const Registry = preload("res://registry.gd")
 const WorldCamera = preload("res://world_camera.gd")
+const FlightWorld = preload("res://flight_world.gd")
 var registry = Registry.new()
 var udp = PacketPeerUDP.new()
 var tiles: Dictionary = {}
@@ -33,33 +34,7 @@ func _ready():
 		push_error("Cannot bind UDP viewer port %s: %s" % [port, error])
 		get_tree().quit(1)
 		return
-	var light = DirectionalLight3D.new()
-	add_child(light)
-	light.rotation_degrees = Vector3(-50, -30, 0)
-	light.light_energy = 1.2
-	var environment = WorldEnvironment.new()
-	environment.environment = Environment.new()
-	environment.environment.background_mode = Environment.BG_COLOR
-	environment.environment.background_color = Color(0.15, 0.24, 0.35)
-	environment.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.environment.ambient_light_color = Color.WHITE
-	environment.environment.ambient_light_energy = 0.65
-	add_child(environment)
-	box(self, Vector3(0, -0.035, 0), Vector3(100, 0.05, 100), Color(0.24, 0.29, 0.25))
-	for i in range(-25, 26):
-		box(self, Vector3(i, 0, 0), Vector3(0.015, 0.005, 50), Color(0.48, 0.55, 0.48))
-		box(self, Vector3(0, 0, i), Vector3(50, 0.005, 0.015), Color(0.48, 0.55, 0.48))
-	for x in range(-10, 21, 5):
-		for z in [-5, 5]:
-			box(self, Vector3(x, 1.5, z), Vector3(0.1, 3, 0.1), Color(0.95, 0.7, 0.2))
-			for h in range(1, 4):
-				var label = Label3D.new()
-				label.text = "%dm / %dm" % [x, h]
-				label.font_size = 32
-				label.pixel_size = 0.006
-				label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-				add_child(label)
-				label.position = Vector3(x, h, z)
+	add_child(FlightWorld.new())
 	world_camera = WorldCamera.new()
 	add_child(world_camera)
 	var canvas = CanvasLayer.new()

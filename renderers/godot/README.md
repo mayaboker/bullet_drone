@@ -13,6 +13,10 @@ The world camera fills the window; labeled FPV panels appear at the top left.
 Right-drag in the world view to orbit and scroll to zoom; scroll over the panels
 to browse additional drones. The window stays open after publishers stop; tiles show STALE after two seconds.
 
+The outdoor course has colored gates, numbered landing pads, trees, hills and
+sunlight with shadows. The scenery is visual-only; PyBullet retains flat-ground
+physics.
+
 See [render contracts and configuration](../../docs/design/godot-rendering.md).
 
 Checks:
