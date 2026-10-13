@@ -90,7 +90,7 @@ def test_arrival_dwell_requires_position_and_velocity_and_own_pad():
     step(9.5,pos=(0,0,.015));assert m.completed
 
 
-@pytest.mark.parametrize('home', [(0,0,.015),(1.5,.25,.015),(3,.5,.015)])
+@pytest.mark.parametrize('home', [(0,0,.015),(1.5,.25,.015),(3,.5,.015),(0,-.75,.015),(1.5,-1,.015),(3,-1.25,.015)])
 def test_complete_flights_cross_gates_both_directions_and_land_on_home(home,monkeypatch):
     from examples.position import demo
     samples=[];resources=[]
@@ -157,6 +157,12 @@ def test_cli_help_usage_import_and_tasks():
     assert result.returncode==0,result.stderr
     tasks={task['label']:task for task in json.loads(Path('.vscode/tasks.json').read_text())['tasks']}
     assert tasks['Run Godot and 3 position drones']['dependsOrder']=='parallel'
-    for index,home in enumerate([(0,0,.015),(1.5,.25,.015),(3,.5,.015)],1):
+    assert tasks['Run Godot and 6 position drones']['dependsOrder']=='parallel'
+    assert tasks['Run Godot and 6 position drones']['dependsOn']==['Run Godot viewer',*[f'Run position drone {i} with Godot' for i in range(1,7)]]
+    from bullet_drone.rendering.config import load_render_settings
+    ids=[]
+    for index,home in enumerate([(0,0,.015),(1.5,.25,.015),(3,.5,.015),(0,-.75,.015),(1.5,-1,.015),(3,-1.25,.015)],1):
         options=PositionDemoCliParser().parse(tasks[f'Run position drone {index} with Godot']['args'][3:])
         assert options.initial_position_m==home and options.renderer=='godot'
+        ids.append(load_render_settings(options.render_config).drone_id)
+    assert len(set(ids))==6

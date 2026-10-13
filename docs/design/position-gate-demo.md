@@ -13,6 +13,15 @@ uv run examples/position/main.py --renderer godot --render-config configs/render
 
 Start Godot separately or select VS Code **Run Godot and 3 position drones**. This task launches the viewer and three independent mission processes using drone_1/2/3 and initial positions (0,0,0.015), (1.5,0.25,0.015), (3,0.5,0.015) m. The individual **Run position drone 1/2/3 with Godot** tasks are also available. **Run position gate mission** uses the PyBullet GUI. Existing hover tasks and examples retain their behavior.
 
+The **Run Godot and 6 position drones** task also launches drones 4–6, each
+with its own render profile and camera panel. The extra pads have XY positions
+(0,-0.75), (1.5,-1), (3,-1.25) m, with initial Z=0.015 m. The original pads
+and three-drone tasks are retained. Reflecting the original trio across
+Y=-0.375 m produces this opposite-side group and a 0.75 m gap for the closest
+pair. All lanes fit the gate corridor; six smaller, separately labeled landing
+pads match the task coordinates. **Run position drone 4/5/6 with Godot** starts
+these publishers individually. Scroll the preview panel stack for later IDs.
+
 CLI options are `--headless`, `--renderer godot|pybullet|none`, `--render-config PATH`, and `--initial-position X Y Z`. No renderer option preserves GUI mode; headless and none run unpaced. Godot uses DIRECT physics and wall-time pacing. Argument/configuration failures return 2, runtime failures/timeouts 1, interruption 130, completion 0. Importing the entry point performs no work or logging setup.
 
 ## Route and landing
@@ -43,7 +52,7 @@ The mission validates episode, next-step identity, positive dt and nondecreasing
 
 Each drone owns an independent physics world. Gates and other Godot scenery are decorative; no inter-drone or gate collision, obstacle avoidance, path planner, wind or sensor estimator is included. The example actively closes XY position error and returns each drone to its own pad. The hover example remains a separate altitude-only scenario.
 
-Tests verify world-force directions under different yaw headings, tilt/collective limits, PID reset and invalid-input rejection, joystick/episode lifecycle, interrupted arrival dwell, home alignment before landing, timeout/failure/interruption cleanup, and CLI/task behavior. Full real PyBullet trajectories for all three pads verify six gate-plane crossings per drone (outbound and return), inside opening clearances near 3 m, own-pad touchdown and zero final rotor speeds.
+Tests verify world-force directions under different yaw headings, tilt/collective limits, PID reset and invalid-input rejection, joystick/episode lifecycle, interrupted arrival dwell, home alignment before landing, timeout/failure/interruption cleanup, and CLI/task behavior. Full real PyBullet trajectories for all six pads verify six gate-plane crossings per drone (outbound and return), inside opening clearances near 3 m, own-pad touchdown and zero final rotor speeds.
 
 Verified complete mission durations are approximately 68.179 s, 65.179 s and
 62.183 s from pads 1, 2 and 3 respectively. Each ended at Z≈0.01349 m with

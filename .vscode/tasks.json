@@ -293,6 +293,101 @@
                 "panel": "dedicated",
                 "clear": true
             }
+        },
+        {
+            "label": "Run position drone 4 with Godot",
+            "type": "process",
+            "command": "uv",
+            "args": [
+                "run",
+                "--locked",
+                "examples/position/main.py",
+                "--renderer",
+                "godot",
+                "--render-config",
+                "configs/render-godot-drone-4.yaml",
+                "--initial-position",
+                "0",
+                "-0.75",
+                "0.015"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            }
+        },
+        {
+            "label": "Run position drone 5 with Godot",
+            "type": "process",
+            "command": "uv",
+            "args": [
+                "run",
+                "--locked",
+                "examples/position/main.py",
+                "--renderer",
+                "godot",
+                "--render-config",
+                "configs/render-godot-drone-5.yaml",
+                "--initial-position",
+                "1.5",
+                "-1",
+                "0.015"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            }
+        },
+        {
+            "label": "Run position drone 6 with Godot",
+            "type": "process",
+            "command": "uv",
+            "args": [
+                "run",
+                "--locked",
+                "examples/position/main.py",
+                "--renderer",
+                "godot",
+                "--render-config",
+                "configs/render-godot-drone-6.yaml",
+                "--initial-position",
+                "3",
+                "-1.25",
+                "0.015"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            }
+        },
+        {
+            "label": "Run Godot and 6 position drones",
+            "dependsOn": [
+                "Run Godot viewer",
+                "Run position drone 1 with Godot",
+                "Run position drone 2 with Godot",
+                "Run position drone 3 with Godot",
+                "Run position drone 4 with Godot",
+                "Run position drone 5 with Godot",
+                "Run position drone 6 with Godot"
+            ],
+            "dependsOrder": "parallel",
+            "problemMatcher": []
         }
     ]
 }

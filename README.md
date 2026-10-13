@@ -102,7 +102,12 @@ uv run examples/position/main.py --renderer godot
 In VS Code, select **Run Godot and 3 position drones** to fly all three drones.
 Each takes off to 3 m, passes through the three gates, returns through them,
 and lands/disarms on its own starting pad. Each flight uses ground-truth XYZ
-position control through the software joystick. The existing hover example
+position control through the software joystick. Use **Run Godot and 6 position
+drones** to include drones 4–6 on mirrored opposite-side pads at `(0, -0.75)`,
+`(1.5, -1)`, and `(3, -1.25)` m. The original three positions stay unchanged;
+a 0.75 m gap separates the closest opposite pair. All six return to their own
+pad and land/disarm. Scroll the FPV panel stack to see cameras 4–6.
+The existing hover example
 remains available. See [the route, controller and verification](docs/design/position-gate-demo.md).
 
 ## Internal control API

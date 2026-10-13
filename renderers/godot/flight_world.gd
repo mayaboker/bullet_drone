@@ -6,6 +6,9 @@ const CHALK = Color(0.59, 0.7, 0.72)
 const ORANGE = Color(1.0, 0.47, 0.12)
 const BLUE = Color(0.12, 0.65, 0.95)
 const MINT = Color(0.28, 0.87, 0.67)
+# PyBullet world XY meters, matching the six position-flight tasks.
+const PAD_POSITIONS_M = [Vector2(0, 0), Vector2(1.5, 0.25), Vector2(3, 0.5),
+	Vector2(0, -0.75), Vector2(1.5, -1), Vector2(3, -1.25)]
 
 func _ready():
 	name = "FlightWorld"
@@ -100,15 +103,17 @@ func build_ground():
 
 func build_landing_pads():
 	var colors = [ORANGE, BLUE, MINT]
-	for index in range(3):
-		# Matches PyBullet starts (0,0), (1.5,.25), (3,.5) in the tasks.
-		var pos = Vector3(index * 1.5, 0.003, -index * 0.25)
-		cylinder(pos, 0.58, 0.005, colors[index])
-		cylinder(pos + Vector3(0, 0.003, 0), 0.5, 0.005, ASPHALT)
-		for x in [-0.17, 0.17]:
-			box(pos + Vector3(x, 0.008, 0), Vector3(0.065, 0.004, 0.4), Color.WHITE)
-		box(pos + Vector3(0, 0.008, 0), Vector3(0.34, 0.004, 0.06), Color.WHITE)
-		label("PAD %02d" % (index + 1), pos + Vector3(0, 0.16, 0.7), colors[index])
+	for index in range(PAD_POSITIONS_M.size()):
+		var home = PAD_POSITIONS_M[index]
+		var pos = Vector3(home.x, 0.003, -home.y)
+		var color = colors[index % colors.size()]
+		cylinder(pos, 0.32, 0.005, color)
+		cylinder(pos + Vector3(0, 0.003, 0), 0.275, 0.005, ASPHALT)
+		for x in [-0.1, 0.1]:
+			box(pos + Vector3(x, 0.008, 0), Vector3(0.035, 0.004, 0.24), Color.WHITE)
+		box(pos + Vector3(0, 0.008, 0), Vector3(0.2, 0.004, 0.035), Color.WHITE)
+		var sign = label("PAD %02d" % (index + 1), pos + Vector3(0, 0.08, 0.38), color)
+		sign.pixel_size = 0.003
 
 func build_gates():
 	var colors = [ORANGE, BLUE, MINT]
