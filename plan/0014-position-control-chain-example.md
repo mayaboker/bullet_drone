@@ -1,7 +1,7 @@
 # Position PID and virtual-joystick control-chain example
 
 Status: Completed
-Implementation commit: Pending
+Implementation commit: `43eff356d22f0fb20f4fe695dcf0463b84129e23`
 
 ## Goal and defaults
 
@@ -21,7 +21,7 @@ Create a new example in examples/position_control that explicitly exercises and 
 
 ## Verification
 
-Focused controller-output and chain tests plus full Python suite; headless CLI run with CSV and inspection of row/step identity. Optional Godot run uses existing render contracts. No commit or push requested.
+Focused controller-output and chain tests plus full Python suite; headless CLI run with CSV and inspection of row/step identity. Optional Godot run uses existing render contracts. Committed and pushing at the user’s request.
 
 ## Outcome
 
@@ -31,4 +31,4 @@ Verification: 259 Python tests passed. New tests cover all six settled XYZ/yaw g
 
 Default headless CLI with CSV completed at 28.9625 simulated seconds, produced 6,951 data rows, settled at all six waypoints, returned within approximately 0.000128 m XY error and landed at Z≈0.01349 m with all motors off. Task commands, labels and dependency references validated. Actual paced Godot run also completed with automatic chain checks; inspected /tmp/bullet-drone-control-chain.png showing world and attached camera views during heading change. Whitespace checks passed.
 
-Implementation commit remains Pending; no commit or push requested.
+Implementation committed as `43eff356d22f0fb20f4fe695dcf0463b84129e23`; pushing at the user’s request.
