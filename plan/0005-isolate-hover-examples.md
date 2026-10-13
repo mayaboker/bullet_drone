@@ -1,8 +1,8 @@
 # 0005: Isolate hover examples
 
-Status: Completed (uncommitted)
+Status: Completed
 
-Implementation commit: Pending
+Implementation commit: `ffeef6ed717f0bd02a2d8c20c29b524234a8f77d`
 
 ## Goal
 
@@ -17,13 +17,13 @@ Put hover demonstration code under `examples/hover`, leaving `src/bullet_drone` 
 
 ## Scope/defaults
 
-No force/model changes, new dependencies, committing, or pushing. Public hover-example imports change to examples.hover. Reusable simulation/control APIs retain their behavior; FlightSettings and flight.mode are removed because scenario selection belongs to examples. Old YAML flight sections are rejected. The main CLI remains gravity-only. Earlier user changes remain intact.
+No force/model or dependency changes. The user subsequently authorized implementation and metadata commits; pushing remains outside scope. Public hover-example imports change to examples.hover. Reusable simulation/control APIs retain their behavior; FlightSettings and flight.mode are removed because scenario selection belongs to examples. Old YAML flight sections are rejected. The main CLI remains gravity-only. Earlier user changes remain intact.
 
 ## Verification
 
 Run the existing tests with imports adjusted for moved modules, plus package-boundary and direct/module example smoke checks. Verify CLI help/import safety and full headless takeoff/hover/landing/disarm. Check no simulation-package imports refer to examples.
 
-Outcome: `uv run pytest -q` passed **188 tests**. Direct and module altitude examples completed at 33.229 s, landed/disarmed with zero motors. The moved headless open-loop example completed 1,200 steps at (0,0,1) m, and the main simulation CLI passed its headless smoke check. CLI help works for both example modules and direct execution outside the repository. The built wheel contains only the reusable library and excludes all hover example modules. No src/bullet_drone imports refer to examples or removed hover modules. `git diff --check` passed. No dependency changes or commits were made.
+Outcome: `uv run pytest -q` passed **188 tests**. Direct and module altitude examples completed at 33.229 s, landed/disarmed with zero motors. The moved headless open-loop example completed 1,200 steps at (0,0,1) m, and the main simulation CLI passed its headless smoke check. CLI help works for both example modules and direct execution outside the repository. The built wheel contains only the reusable library and excludes all hover example modules. No src/bullet_drone imports refer to examples or removed hover modules. `git diff --check` passed. No dependency changes were made. Plans 0004–0006 were committed together after the user requested it; the recorded hash identifies the implementation commit.
 
 
 ## Follow-up removal

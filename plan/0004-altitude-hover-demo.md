@@ -1,8 +1,8 @@
 # 0004: Altitude takeoff, hover, landing, and disarm demo
 
-Status: Completed (uncommitted)
+Status: Completed
 
-Implementation commit: Pending
+Implementation commit: `ffeef6ed717f0bd02a2d8c20c29b524234a8f77d`
 
 ## Goal
 
@@ -24,7 +24,7 @@ Use 1 kg, 240 Hz, initial position (0, 0, 0.015) m, flat ground at world Z=0, ta
 
 Example tuning: altitude P=1.5 s^-1, max vertical speed=1 m/s; velocity PID=(4,1,0), acceleration limit=3 m/s^2, integral contribution limit=1 m/s^2. Internal attitude P=(4,4,4), rate limits=(2,2,2) rad/s, rate PID=(0.05,0,0), torque limits=0.1 N*m.
 
-Altitude-only control with level attitude; defer horizontal position hold, physical joystick, noisy sensors, motor lag, Betaflight and a contact-sensor API. Touchdown is a state-threshold estimate for this flat-ground model. No dependency changes or commits/pushes are authorized by implementation alone.
+Altitude-only control with level attitude; defer horizontal position hold, physical joystick, noisy sensors, motor lag, Betaflight and a contact-sensor API. Touchdown is a state-threshold estimate for this flat-ground model. No dependency changes are required. The user subsequently authorized implementation and metadata commits; pushing remains outside scope.
 
 ## Verification
 
@@ -32,7 +32,7 @@ Baseline: 140 tests pass. Prototype feasibility: hover starts at 5.18 s, landing
 
 Test joystick translation/reset/invalid input/identity; disarm with nonzero demands and rearming reset; altitude direction/gravity compensation/limits/reset/mass scaling; full headless mission with 20 s hover and motors off; interrupted dwell periods, timeout, stop predicate failure/interruption and cleanup. Run full suite and `uv run examples/hove_demo.py --headless`; document ideal-profile tuning.
 
-Outcome: `uv run pytest -q` passed **184 tests**. `uv run examples/hove_demo.py --headless` completed successfully: hover at 5.179 s, landing at 25.179 s, disarm at 32.225 s, and final observation at 33.229 s with body height about 0.0135 m and zero rotor speeds. The full-flight test verifies altitude within 5 cm (observed maximum error about 1.74 cm), 20 s hovering, and at least 1 s motors off. Timeout, interruption, stop-predicate, joystick, arming, altitude, and entry-point checks pass. Existing 140 tests remain passing. `git diff --check` passed. No dependency changes or commits were made.
+Outcome: `uv run pytest -q` passed **184 tests**. `uv run examples/hove_demo.py --headless` completed successfully: hover at 5.179 s, landing at 25.179 s, disarm at 32.225 s, and final observation at 33.229 s with body height about 0.0135 m and zero rotor speeds. The full-flight test verifies altitude within 5 cm (observed maximum error about 1.74 cm), 20 s hovering, and at least 1 s motors off. Timeout, interruption, stop-predicate, joystick, arming, altitude, and entry-point checks pass. Existing 140 tests remain passing. `git diff --check` passed. No dependency changes were made. Plans 0004–0006 were committed together after the user requested it; the recorded hash identifies the implementation commit.
 
 
 ## Follow-up location
