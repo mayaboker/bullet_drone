@@ -31,11 +31,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     logger.remove()
     logger.add(sys.stderr, level="INFO", format="{level}: {message}", diagnose=False)
     try:
+        position_options = {} if options.initial_position_m is None else {"initial_position_m": options.initial_position_m}
         if options.renderer is None and options.render_config is None:
-            result = run_hover_demo(gui=not options.headless)
+            result = run_hover_demo(gui=not options.headless, **position_options)
         else:
             result = run_hover_demo(gui=not options.headless, renderer=options.renderer,
-                                    render_config=options.render_config, headless=options.headless)
+                                    render_config=options.render_config, headless=options.headless, **position_options)
         state = result.observation.ground_truth
         logger.info("Hover demo completed at {:.3f} s; landed and disarmed; final height {:.4f} m",
                     state.simulation_time_s, state.position_m[2])

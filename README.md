@@ -76,6 +76,12 @@ In VS Code, use **Tasks: Run Task → Run Godot and drone** to start both.
 The **Run Godot viewer** and **Run drone with Godot** tasks also run independently.
 Godot must be available on PATH.
 
+Use **Run Godot and 3 drones** for three simultaneous hover missions, with
+separate **Run drone 1/2/3 with Godot** tasks available. Initial world positions
+are `(0, 0, 0.015)`, `(1.5, 0.25, 0.015)`, and `(3, 0.5, 0.015)` meters: spaced
+along +X with a small +Y offset. Each has a unique drone ID and FPV panel.
+Each simulation owns its own physics world.
+
 Each camera defaults to 640×480 and 75° vertical FOV. Godot shows a full-window world
 camera with titled drone FPV panels at the top left. Right-drag orbits the world
 view and the mouse wheel zooms; separate publishers need unique `drone_id`

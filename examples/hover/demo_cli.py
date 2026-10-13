@@ -13,16 +13,21 @@ class HoverDemoOptions:
     headless: bool
     renderer: str | None = None
     render_config: Path | None = None
+    initial_position_m: tuple[float, float, float] | None = None
 
 
 class HoverDemoCliParser:
     def __init__(self) -> None:
         self._command = click.Command(
             "hover-demo",
-            callback=lambda headless, renderer, render_config: HoverDemoOptions(headless, renderer, render_config),
+            callback=lambda headless, renderer, render_config, initial_position: HoverDemoOptions(
+                headless, renderer, render_config, initial_position or None),
             params=[click.Option(
                 ["--headless"], is_flag=True,
                 help="Run without a display or wall-clock pacing.",
+            ), click.Option(
+                ["--initial-position"], type=float, nargs=3, default=None, metavar="X Y Z",
+                help="Initial PyBullet world position in meters (default: 0 0 0.015).",
             )] + rendering_options(),
             help="Take off to 3 m, hover for 20 s, then land and disarm.",
         )

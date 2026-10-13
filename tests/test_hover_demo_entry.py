@@ -76,3 +76,21 @@ def test_direct_example_help_works_outside_repository(tmp_path):
     result = subprocess.run([sys.executable, str(EXAMPLE), '--help'], cwd=tmp_path, capture_output=True, text=True, timeout=10)
     assert result.returncode == 0, result.stderr
     assert 'pybullet build time' not in result.stderr
+
+
+def test_example_forwards_initial_world_position():
+    module = load_example()
+    state = DroneState('episode', 8000, 33.3, (3, .5, .0135), (0, 0, 0, 1), (0, 0, 0), (0, 0, 0))
+    module.run_hover_demo = Mock(return_value=SimpleNamespace(observation=DroneObservation(state)))
+    assert module.main(['--headless', '--initial-position', '3', '.5', '.015']) == 0
+    module.run_hover_demo.assert_called_once_with(gui=False, initial_position_m=(3., .5, .015))
+
+
+@pytest.mark.parametrize('position', [(float('nan'), 0, .015), (0, float('inf'), .015), (1,2)])
+def test_invalid_initial_position_rejected_before_physics(position, monkeypatch):
+    from examples.hover import hover_demo
+    backend = Mock()
+    monkeypatch.setattr(hover_demo, 'PyBulletPhysics', backend)
+    with pytest.raises(ConfigurationError):
+        hover_demo.run_hover_demo(gui=False, initial_position_m=position)
+    backend.assert_not_called()

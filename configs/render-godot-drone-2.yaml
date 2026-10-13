@@ -1,0 +1,15 @@
+drone_id: drone_2
+sources:
+  position: ground_truth
+  altitude: ground_truth
+  attitude: ground_truth
+udp:
+  host: 127.0.0.1
+  port: 9870
+rate_hz: 60
+camera:
+  width_px: 640
+  height_px: 480
+  fov_y_deg: 75
+  mount_position_body_m: [0.15, 0.0, 0.0]
+  downward_tilt_deg: 10

@@ -29,7 +29,7 @@ uv run examples/hover/main.py --renderer godot --render-config configs/render-go
 uv run bullet-drone --config configs/basic.yaml --renderer godot
 ```
 
-A custom receiver port uses `godot --path renderers/godot -- --port=9871` and the matching YAML UDP port. The receiver binds loopback. For multiple simulations, copy the profile and give each publisher a unique drone ID. Their physics worlds are independent; shared rendering does not add inter-drone physical interaction.
+A custom receiver port uses `godot --path renderers/godot -- --port=9871` and the matching YAML UDP port. The receiver binds loopback. For multiple simulations, copy the profile and give each publisher a unique drone ID. Their physics worlds are independent; shared rendering does not add inter-drone physical interaction. The VS Code **Run Godot and 3 drones** task launches three hover examples in parallel with unique IDs and staggered world XY positions (0,0), (1.5,0.25), (3,0.5) m. All start at Z=0.015 m, take off to 3 m, hold for 20 s, and land/disarm. Their three FPV panels share the same viewer.
 
 Both CLIs also accept `--renderer pybullet` and `--renderer none`. No renderer option preserves existing GUI/headless defaults. Godot overrides physics GUI mode to DIRECT and enables wall-time pacing. None is fast headless. Explicit `--headless` conflicts with Godot/PyBullet, and `--render-config` requires Godot. Python does not need a graphical display to publish to Godot.
 

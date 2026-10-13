@@ -28,14 +28,15 @@ class HoverDemoResult:
 
 
 def run_hover_demo(*, gui: bool = True, max_duration_s: float = 45.0,
-                   renderer: str | None = None, render_config=None, headless: bool = False) -> HoverDemoResult:
+                   renderer: str | None = None, render_config=None, headless: bool = False,
+                   initial_position_m: tuple[float, float, float] = (0.0, 0.0, 0.015)) -> HoverDemoResult:
     """Run the fixed ideal-profile example; timeout and failures close resources."""
     duration = _number(max_duration_s, "demo.max_duration_s", positive=True)
     gui, pace, consumers = compose_rendering(renderer, render_config, gui=gui, headless=headless)
     dt = 1 / 240
     config = SimulationConfig(
         SimulationSettings(dt, ceil(duration / dt), (0.0, 0.0, -9.81), gui),
-        DroneSettings(1.0, (0.0, 0.0, 0.015)),
+        DroneSettings(1.0, initial_position_m),
     )
     vehicle = load_racer_parameters()
     altitude = AltitudeController(
