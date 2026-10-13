@@ -1,7 +1,7 @@
 # VS Code Godot and drone tasks
 
 Status: Completed
-Implementation commit: Pending
+Implementation commit: `c5132cad658ce4aca69cf5b907c196ec18c1fe8b`
 
 ## Goal
 
@@ -25,4 +25,4 @@ Validated JSON parsing, unique labels, dependency references, parallel launch, a
 
 ## Scope
 
-No dependency installation, application changes, commit, or push.
+No dependency installation, application changes, or push. Committed with the rendering milestone at the user’s request.

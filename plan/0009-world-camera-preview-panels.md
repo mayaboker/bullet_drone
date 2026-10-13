@@ -1,7 +1,7 @@
 # World camera and top-left drone camera panels
 
 Status: Completed
-Implementation commit: Pending
+Implementation commit: `c5132cad658ce4aca69cf5b907c196ec18c1fe8b`
 
 ## Goal and scope
 
@@ -26,4 +26,4 @@ Implemented a focused world-camera script and a full-window spectator view with 
 
 Verification: Godot editor import/parse and registry tests passed. Visible two-publisher smoke passed for root world camera, FPV placement, sorted titles, independent viewports/FOV, camera mount, aspect-preserving resizing, wheel zoom and staleness. Captured and inspected /tmp/bullet-drone-godot.png: both titled FPV panels and both drones in the shared world view are visible. Whitespace checks passed.
 
-Implementation commit is Pending. No commit requested.
+Implementation committed as `c5132cad658ce4aca69cf5b907c196ec18c1fe8b`.

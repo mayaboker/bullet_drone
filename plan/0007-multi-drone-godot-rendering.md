@@ -1,7 +1,7 @@
 # Multi-drone Godot camera rendering
 
 Status: Completed
-Implementation commit: Pending
+Implementation commit: `c5132cad658ce4aca69cf5b907c196ec18c1fe8b`
 
 ## Goal and scope
 
@@ -34,4 +34,4 @@ Verification: 213 Python tests passed; Godot 4.3 registry tests passed including
 
 The actual wall-time-paced hover entry point completed with no viewer on production port 9870: hover began at 5.179 s, landing at 25.179 s, disarm at 32.225 s, completion at 33.229 s and final height 0.0135 m. An additional API verification confirmed all final rotor speeds are zero. Both CLI help commands and whitespace checks passed.
 
-Implementation commit remains Pending: this milestone has not been committed.
+Implementation committed as `c5132cad658ce4aca69cf5b907c196ec18c1fe8b`.
