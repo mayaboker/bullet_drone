@@ -1,7 +1,7 @@
 # Position-controlled gate course example
 
 Status: Completed
-Implementation commit: Pending
+Implementation commit: `d99106e7a15fee202e0c77c72dfaa3fac5996082`
 
 ## Goal and defaults
 
@@ -33,4 +33,4 @@ Verification: 240 Python tests passed. Position tests validate yaw-independent w
 
 Three actual paced Godot publishers also completed simultaneously: pad 1 at 68.179 s, pad 2 at 65.179 s, pad 3 at 62.183 s. Final XY error below 0.00001 m and Z≈0.01349 m. Captured and inspected the live world/FPV course screenshot at /tmp/bullet-drone-position-course.png. Viewer confirmed all three returned to ground. Whitespace checks passed.
 
-Implementation commit remains Pending; no commit or push requested.
+Implementation committed as `d99106e7a15fee202e0c77c72dfaa3fac5996082` at the user’s request. No push requested.
