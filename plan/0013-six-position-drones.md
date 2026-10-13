@@ -1,7 +1,7 @@
 # Six-drone position mission with mirrored pads
 
 Status: Completed
-Implementation commit: Pending
+Implementation commit: `91644751a68d664c76f6527756299d626ecfee27`
 
 ## Goal and defaults
 
@@ -20,7 +20,7 @@ Extend real trajectory coverage to mirrored lanes: both-way gate crossings, open
 
 ## Scope
 
-Six independent single-drone worlds share one visual viewer. No formation controller, inter-drone collision or mission changes. Committing at the user’s request; no push requested.
+Six independent single-drone worlds share one visual viewer. No formation controller, inter-drone collision or mission changes. Committed at the user’s request; no push requested.
 
 ## Outcome
 
@@ -30,4 +30,4 @@ Verification: 243 Python tests passed, including both-way gate crossings, openin
 
 Ran all six actual paced mission publishers simultaneously with a viewer on isolated port 19872. All processes returned success; the viewer verified six distinct registrations and each landing position against its own visual pad. New drones completed at 68.179, 65.179 and 62.183 simulated seconds with XY errors below 0.00001 m and Z≈0.01349 m. Captured and inspected /tmp/bullet-drone-six-position.png and /tmp/bullet-drone-six-position-panels.png, including cameras 4–6 and both flight lanes. Whitespace checks passed.
 
-Implementation commit remains Pending until the requested commit is created.
+Implementation committed as `91644751a68d664c76f6527756299d626ecfee27`.
