@@ -84,3 +84,29 @@ def test_main_exit_status_and_cleanup(failure, status, monkeypatch):
     monkeypatch.setattr("bullet_drone.main.DroneEnvironment", Mock(return_value=env))
     assert main(["--config", "configs/headless.yaml"]) == status
     env.close.assert_called_once()
+
+
+@pytest.mark.parametrize('failure', [RuntimeError('close failed'), KeyboardInterrupt()])
+def test_provider_cleanup_failure_still_closes_environment(failure):
+    env = Mock()
+    env.reset.return_value = observation(0)
+    env.step.return_value = observation(1)
+    provider = Mock()
+    provider.close.side_effect = failure
+    with pytest.raises(type(failure)):
+        SimulationRunner().run(env, 1, command_provider=provider)
+    provider.reset.assert_called_once_with(observation(0))
+    provider.close.assert_called_once()
+    env.close.assert_called_once()
+
+
+def test_both_cleanup_failures_preserve_primary_failure():
+    env = Mock()
+    env.reset.side_effect = ValueError('primary')
+    env.close.side_effect = RuntimeError('environment close')
+    provider = Mock()
+    provider.close.side_effect = RuntimeError('provider close')
+    with pytest.raises(ValueError, match='primary'):
+        SimulationRunner().run(env, 1, command_provider=provider)
+    env.close.assert_called_once()
+    provider.close.assert_called_once()

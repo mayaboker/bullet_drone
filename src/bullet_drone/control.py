@@ -1,4 +1,4 @@
-"""Open-loop demonstration command sources; no feedback controller yet."""
+"""Legacy open-loop hover demonstration; feedback stabilization lives in controllers."""
 
 from bullet_drone.commands import RotorCommand, WrenchCommand
 from bullet_drone.config import ConfigurationError
@@ -11,6 +11,12 @@ class HoverCommandProvider:
         if gravity_m_s2[0] != 0 or gravity_m_s2[1] != 0 or gravity_m_s2[2] >= 0:
             raise ConfigurationError("Hover mode requires downward vertical gravity")
         self.allocation = mixer.mix(WrenchCommand(mass_kg * -gravity_m_s2[2]))
+
+    def reset(self, observation: DroneObservation) -> None:
+        """Stateless allocation needs no episode history."""
+
+    def close(self) -> None:
+        """This provider owns no resources."""
 
     def command(self, observation: DroneObservation) -> RotorCommand:
         state = observation.ground_truth

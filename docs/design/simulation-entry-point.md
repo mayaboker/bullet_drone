@@ -18,6 +18,8 @@ This document describes the implemented first milestone. The broader 0.1.0 archi
 
 The subsequent [rotor forces and hover milestone](rotor-forces-and-hover.md) is also implemented. The diagrams below retain the basic entry-point structure; current `step()` additionally accepts episode-scoped `RotorCommand` actions, and the runner supports an optional command provider. `None` retains gravity-only behavior. Optional YAML `flight.mode` selects `gravity` (default) or `hover`.
 
+The [internal flight-control milestone](internal-flight-control.md) adds optional YAML `control.backend` (default `internal`); selecting `betaflight` raises an unsupported-controller configuration error before acquiring a world, with CLI status 2. Stabilization is API-only; CLI gravity and open-loop hover remain unchanged. Command providers now implement reset/close, and the runner resets and closes both provider and environment through the documented lifecycle.
+
 ## Basic block diagram
 
 Solid arrows describe the main execution and state flow. Dashed arrows show diagnostics and future consumers.

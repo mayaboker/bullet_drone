@@ -3,8 +3,10 @@
 A Python package for quadcopter simulation using PyBullet. The first milestone
 simulates a bundled racer drone URDF with gravity and ideal rotor forces. It provides a Click CLI,
 validated YAML configuration, GUI/headless modes, and Loguru diagnostics.
-It can demonstrate open-loop hover. Motor lag, electrical dynamics, feedback
-control, and sensor models are planned for later milestones.
+It can demonstrate open-loop hover and provides an API for internal Angle/Acro
+stabilization with a shared PID implementation and caller-supplied high-level
+RPY/thrust control. Motor lag, electrical dynamics, high-level hover control,
+and sensor models are planned for later milestones.
 
 ## Setup
 
@@ -57,6 +59,19 @@ racer model driven by ideal instantaneous motors; no Gymnasium dependency is req
 propellers (+X) are orange and rear propellers are blue. The model is adapted
 from [gym-pybullet-drones](https://github.com/learnsyslab/gym-pybullet-drones/blob/01563120e060c9233a61f9cf00e6d4e5a8b331ab/gym_pybullet_drones/assets/racer.urdf);
 see the bundled [asset notes](src/bullet_drone/assets/racer/README.md) for provenance.
+
+## Internal control API
+
+Optional YAML `control.backend` defaults to `internal`. Selecting `betaflight`
+raises an unsupported-controller error before simulation startup; the CLI returns 2.
+The CLI still runs gravity or open-loop hover. Stabilization is available through
+`create_flight_command_provider()` with a caller-supplied `HighLevelController`
+and explicit gains/limits. Angle commands use radians; Acro commands use body
+rates in rad/s; collective thrust uses newtons. Physics accepts injected ideal
+motor and propeller components and records actual rotor speeds.
+
+See [the API, frames, lifecycle, and composition example](docs/design/internal-flight-control.md)
+and [the implementation plan with reference image](plan/0003-internal-flight-control.md).
 
 ## Verification
 

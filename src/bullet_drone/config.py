@@ -68,10 +68,20 @@ class FlightSettings:
 
 
 @dataclass(frozen=True, slots=True)
+class ControlSettings:
+    backend: str = "internal"
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.backend, str) or self.backend not in ("internal", "betaflight"):
+            raise ConfigurationError("control.backend must be 'internal' or 'betaflight'")
+
+
+@dataclass(frozen=True, slots=True)
 class SimulationConfig:
     simulation: SimulationSettings
     drone: DroneSettings
     flight: FlightSettings = field(default_factory=FlightSettings)
+    control: ControlSettings = field(default_factory=ControlSettings)
 
     def __post_init__(self) -> None:
         gravity = self.simulation.gravity_m_s2
@@ -97,11 +107,12 @@ class YamlConfigLoader:
             data = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
         except (OSError, UnicodeError, yaml.YAMLError) as exc:
             raise ConfigurationError(f"Cannot read YAML configuration {path}: {exc}") from exc
-        root = _mapping(data, "configuration", {"simulation", "drone"}, {"flight"})
+        root = _mapping(data, "configuration", {"simulation", "drone"}, {"flight", "control"})
         simulation = _mapping(
             root["simulation"], "simulation",
             {"timestep_s", "max_steps", "gravity_m_s2"}, {"gui"},
         )
         drone = _mapping(root["drone"], "drone", {"mass_kg", "initial_position_m"})
         flight = FlightSettings(**_mapping(root["flight"], "flight", {"mode"})) if "flight" in root else FlightSettings()
-        return SimulationConfig(SimulationSettings(**simulation), DroneSettings(**drone), flight)
+        control = ControlSettings(**_mapping(root["control"], "control", set(), {"backend"})) if "control" in root else ControlSettings()
+        return SimulationConfig(SimulationSettings(**simulation), DroneSettings(**drone), flight, control)

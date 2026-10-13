@@ -11,6 +11,8 @@ Demonstrate open-loop hover using requested total thrust and body torque, a boun
 
 Each physical effect has its own named method or focused module and independent verification. Mixing requests actuator output; it does not calculate the net force after gravity and drag. The physics adapter applies forces and lets PyBullet integrate the body.
 
+The [internal flight-control milestone](internal-flight-control.md) subsequently adds API-only stabilization and extracts injectable ideal motor dynamics and a propeller model. The open-loop demonstration below retains its behavior.
+
 ## Component diagram
 
 ```mermaid
@@ -36,7 +38,7 @@ flowchart LR
 - `WrenchCommand` contains nonnegative collective thrust in N and body-frame roll/pitch/yaw torque in N·m.
 - `MotorMixer.mix()` returns `MotorAllocation`: requested and achieved wrench, four rotor thrusts and speeds, torque scaling, and saturation status.
 - `RotorCommand` contains four speeds in rad/s ordered prop0–prop3, episode identity, and the intended next step index.
-- Environment and physics `step()` accept a rotor command or `None`. `None` means zero speeds for that step, not holding the last command. Rejected commands do not advance physics or invalidate an otherwise ready episode.
+- Environment and physics `step()` accept a rotor command or `None`. `None` means zero target speeds for that step, not holding the last command. Ideal motors stop immediately; injected motor dynamics determine actual speeds. Rejected commands do not advance physics or invalidate an otherwise ready episode.
 - The runner accepts an optional `CommandProvider`. The hover provider associates its constant allocation with the current observation's episode and next step. Command-provider failures follow the same cleanup path as backend failures.
 - Ground truth includes `rotor_speeds_rad_s`. Reset sets speeds to zero; ideal motors change speed instantaneously on a successful commanded step. Sensor fields remain empty.
 
@@ -106,7 +108,7 @@ The final physics scope follows the [course's force inventory](https://github.co
 | Quadratic body drag | Pending | Independent body drag force model. |
 | Rotor-dependent translational drag | Pending | Independent rotor-air drag model. |
 | Angular damping | Pending | Explicit rotational resistance model. |
-| Motor dynamics | Pending | Actual speed response to target speed; motor lag. |
+| Motor dynamics | Ideal instantaneous component implemented | Add calibrated actual speed response and motor lag. |
 | KV and battery behavior | Pending | Voltage, current, capacity, and actuator limits. |
 | Wind | Pending | Air-relative velocity input to aerodynamic models. |
 | Rotor inflow and blade flapping | Pending | Thrust modification and in-plane forces. |
@@ -114,4 +116,4 @@ The final physics scope follows the [course's force inventory](https://github.co
 | Ground effect | Pending | Surface-dependent rotor thrust modification. |
 | Prop wash / induced airflow | Pending, advanced | Local airflow shared by interacting rotors/vehicles. |
 
-KV, voltage sag, motor lag, feedback control, drag, and advanced aerodynamics are outside this milestone. KV is not a thrust coefficient, and aerodynamic resistance to rotor spinning must not be confused with translational drag on the drone.
+KV, voltage sag, motor lag, drag, and advanced aerodynamics remain future work. Internal attitude/rate feedback control is implemented in the subsequent stabilization milestone; high-level hover control remains future work. KV is not a thrust coefficient, and aerodynamic resistance to rotor spinning must not be confused with translational drag on the drone.

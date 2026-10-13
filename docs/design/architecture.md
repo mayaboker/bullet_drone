@@ -13,9 +13,9 @@ Design a reusable Python package for simulating a quadcopter with PyBullet. The 
 
 The central architectural goal is to separate physical evolution from visual observation. Physics owns the authoritative world and simulation clock. Rendering receives snapshots and constructs camera views without controlling or modifying physics. Logging and plotting consume telemetry through independent interfaces. A separate sensors package converts ground truth into noisy measurements; the environment groups ground truth and sensor readings in a `DroneObservation` as described in the [sensor design](sensors.md).
 
-The first version targets one quadcopter in a configured scene, fixed-step simulation, direct rotor commands, camera rendering, telemetry recording, and plotting. Flight controllers may be supplied by callers through the command interface. Built-in autopilots, hardware connections, ROS integration, multiple drones, and advanced aerodynamic models are outside the initial scope.
+The first version targets one quadcopter in a configured scene, fixed-step simulation, direct rotor commands, camera rendering, telemetry recording, and plotting. Flight controllers may be supplied by callers through the command interface. High-level autopilots, hardware connections, ROS integration, multiple drones, and advanced aerodynamic models are outside the initial scope.
 
-This document describes the intended overall design. The [entry-point milestone](simulation-entry-point.md) and [ideal rotor/hover milestone](rotor-forces-and-hover.md) are implemented with GUI/headless modes, bounded motor allocation, rotor forces, and immutable observations. Motor lag, sensor models, independent rendering, and telemetry consumers remain future work before the complete 0.1.0 scope.
+This document describes the intended overall design. The [entry-point milestone](simulation-entry-point.md) and [ideal rotor/hover milestone](rotor-forces-and-hover.md) are implemented with GUI/headless modes, bounded motor allocation, rotor forces, and immutable observations. The [internal stabilization milestone](internal-flight-control.md) adds API-only Angle/Acro control with ideal state feedback and injectable motor/propeller boundaries. Motor lag, sensor models, independent rendering, and telemetry consumers remain future work before the complete 0.1.0 scope.
 
 ## 2. Design principles
 
@@ -200,7 +200,7 @@ Keep optional display and plotting dependencies outside the minimum headless phy
 
 The [0.1.0 requirements overview](requirements/v0.1.0/index.md) links to independently identifiable requirements for [physics](requirements/v0.1.0/physics.md), [software](requirements/v0.1.0/software.md), and [architecture and integration](requirements/v0.1.0/architecture.md). Requirement status is draft until reviewed.
 
-Verification covers free fall and contact, ideal hover, rotor force and torque response, mixer saturation, command validation, lifecycle contracts, GUI/headless operation, and failure/interruption cleanup. Future verification should add motor lag and electrical dynamics, independent rendering, snapshot/frame correlation, recording completeness, and controlled consumer failures. The implemented milestones remain a subset of the broader requirements.
+Verification covers free fall and contact, ideal hover, rotor force and torque response, mixer saturation, internal Angle/Acro stabilization, PID behavior, ideal actuator model injection, command validation, lifecycle contracts, GUI/headless operation, and failure/interruption cleanup. Future verification should add motor lag and electrical dynamics, independent rendering, snapshot/frame correlation, recording completeness, and controlled consumer failures. The implemented milestones remain a subset of the broader requirements.
 
 ## 12. Open decisions for the next design revision
 
@@ -209,6 +209,6 @@ Verification covers free fall and contact, ideal hover, rotor force and torque r
 - Select telemetry storage and plotting libraries, required measurements, and recording guarantees.
 - Select process transport and frame buffer ownership, supported platforms, and acceptable rendering latency.
 - Agree physics step duration, target render/plot rates, numerical tolerances, and real-time requirements.
-- Decide whether motor lag, drag, wind, or controller interfaces belong in the first version. IMU, barometer, and rangefinder models are planned in the [sensor milestone](sensors.md); concrete rates, noise profiles, and calibration parameters remain open.
+- Motor lag, drag, and wind remain future work; internal stabilization and high-level controller interfaces are implemented. IMU, barometer, and rangefinder models are planned in the [sensor milestone](sensors.md); concrete rates, noise profiles, and calibration parameters remain open.
 
 These decisions should update the relevant versioned requirements before implementation starts.

@@ -2,8 +2,8 @@
 
 from typing import Protocol
 
-from bullet_drone.commands import RotorCommand
-from bullet_drone.models import DroneObservation, DroneState
+from bullet_drone.commands import HighLevelCommand, RotorCommand, WrenchCommand
+from bullet_drone.models import ControlFeedback, DroneObservation, DroneState, PropellerOutput, RotorSpeeds
 
 
 class LifecycleError(RuntimeError):
@@ -27,4 +27,36 @@ class SimulationEnvironment(Protocol):
 
 
 class CommandProvider(Protocol):
+    """Runner-owned episode reset and resource cleanup, plus next-step command."""
+
+    def reset(self, observation: DroneObservation) -> None: ...
+    def close(self) -> None: ...
     def command(self, observation: DroneObservation) -> RotorCommand: ...
+
+
+class HighLevelController(Protocol):
+    def reset(self, observation: DroneObservation) -> None: ...
+    def command(self, observation: DroneObservation, dt_s: float) -> HighLevelCommand: ...
+    def close(self) -> None: ...
+
+
+class FeedbackSource(Protocol):
+    def read(self, observation: DroneObservation) -> ControlFeedback: ...
+
+
+class StabilizationController(Protocol):
+    def reset(self) -> None: ...
+    def update(self, command: HighLevelCommand, feedback: ControlFeedback, dt_s: float) -> WrenchCommand: ...
+
+
+class MotorDynamics(Protocol):
+    """Four prop0–prop3 actual rad/s; reset stops motors, update uses positive dt."""
+
+    def reset(self) -> RotorSpeeds: ...
+    def update(self, targets_rad_s: RotorSpeeds, dt_s: float) -> RotorSpeeds: ...
+
+
+class PropellerModel(Protocol):
+    """Actual rad/s to body-frame forces and reaction torque; no integration."""
+
+    def calculate(self, speeds_rad_s: RotorSpeeds) -> PropellerOutput: ...

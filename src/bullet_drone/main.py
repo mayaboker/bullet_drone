@@ -7,6 +7,7 @@ import click
 from loguru import logger
 
 from bullet_drone.cli import CliParser
+from bullet_drone.composition import validate_control_backend
 from bullet_drone.config import ConfigurationError, YamlConfigLoader
 from bullet_drone.control import HoverCommandProvider
 from bullet_drone.environment import DroneEnvironment
@@ -32,6 +33,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     logger.add(sys.stderr, level="INFO", format="{level}: {message}", diagnose=False)
     try:
         config = YamlConfigLoader().load(options.config_path)
+        validate_control_backend(config.control)
         vehicle = load_racer_parameters()
         provider = None
         if config.flight.mode == "hover":

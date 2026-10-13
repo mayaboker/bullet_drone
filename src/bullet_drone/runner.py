@@ -18,6 +18,8 @@ class SimulationRunner:
             if type(max_steps) is not int or max_steps <= 0:
                 raise ValueError("max_steps must be a positive integer")
             observation = environment.reset()
+            if command_provider is not None:
+                command_provider.reset(observation)
             start = time.monotonic()
             for _ in range(max_steps):
                 if command_provider is None:
@@ -29,12 +31,25 @@ class SimulationRunner:
                     if remaining > 0:
                         time.sleep(remaining)
         except BaseException:
-            # Preserve the original failure/interrupt if cleanup also fails.
-            try:
-                environment.close()
-            except Exception:
-                logger.exception("Environment cleanup failed while handling a simulation failure")
+            # Attempt every cleanup; preserve the original failure/interrupt.
+            for resource in (command_provider, environment):
+                if resource is not None:
+                    try:
+                        resource.close()
+                    except BaseException:
+                        logger.exception("Simulation resource cleanup failed while handling a failure")
             raise
         else:
-            environment.close()
+            failure = None
+            for resource in (command_provider, environment):
+                if resource is not None:
+                    try:
+                        resource.close()
+                    except BaseException as exc:
+                        if failure is None:
+                            failure = exc
+                        else:
+                            failure.add_note(f"Additional resource cleanup failure: {exc}")
+            if failure is not None:
+                raise failure
             return observation

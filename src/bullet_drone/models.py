@@ -32,3 +32,19 @@ class SensorReadings:
 class DroneObservation:
     ground_truth: DroneState
     sensors: SensorReadings = field(default_factory=SensorReadings)
+
+
+@dataclass(frozen=True, slots=True)
+class ControlFeedback:
+    """Ideal body-to-world orientation and body-axis angular rates (rad/s)."""
+
+    orientation_xyzw: Quaternion
+    body_rates_rad_s: Vector3
+
+
+@dataclass(frozen=True, slots=True)
+class PropellerOutput:
+    """Body-frame rotor forces (N), and aggregate body reaction torque (N*m)."""
+
+    forces_n: tuple[Vector3, Vector3, Vector3, Vector3]
+    reaction_torque_nm: Vector3

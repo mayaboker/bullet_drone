@@ -1,12 +1,13 @@
 # Design documents
 
-This folder contains the design for a Python package that simulates a quadcopter using PyBullet. The first simulation entry-point milestone is implemented; broader architecture, sensor designs, and release requirements remain drafts. Each document states its implementation status.
+This folder contains the design for a Python package that simulates a quadcopter using PyBullet. The entry-point, ideal rotor, and internal stabilization milestones are implemented; broader architecture, sensor designs, and release requirements remain drafts. Each document states its implementation status.
 
 ## Architecture
 
 - [Initial architecture](architecture.md): project goals, component diagram, responsibilities, interfaces, and open decisions.
 - [First simulation entry point](simulation-entry-point.md): Click CLI, YAML configuration, GUI/headless modes, environment lifecycle, gravity-only stepping, and Loguru diagnostics.
 - [Rotor forces and ideal hover](rotor-forces-and-hover.md): motor mixer, bounded commands, independent force models, hover demonstration, and complete force roadmap.
+- [Internal flight control](internal-flight-control.md): API-only Angle/Acro stabilization, common PID, high-level command contract, controller selector, and ideal motor/propeller boundaries.
 - [Sensors and drone observations](sensors.md): IMU, barometer, rangefinder, noise models, and separation of ground truth from measurements.
 - [Project guidance](../../AGENTS.md): SOLID rules, library choices, and development workflow.
 - [Domain glossary](../../CONTEXT.md): shared terminology used by the design.

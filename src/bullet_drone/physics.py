@@ -6,21 +6,22 @@ import os
 import sys
 from uuid import uuid4
 
-from bullet_drone.commands import InvalidCommandError, RotorCommand
+from bullet_drone.commands import InvalidCommandError, RotorCommand, _values
 from bullet_drone.config import SimulationConfig
-from bullet_drone.contracts import BackendError, LifecycleError
-from bullet_drone.forces.reaction_torque import ReactionTorqueModel
-from bullet_drone.forces.thrust import RotorThrustModel
-from bullet_drone.models import DroneState
+from bullet_drone.contracts import BackendError, LifecycleError, MotorDynamics, PropellerModel
+from bullet_drone.actuators import IdealMotorDynamics
+from bullet_drone.propellers import IdealPropellerModel
+from bullet_drone.models import DroneState, PropellerOutput, RotorSpeeds
 from bullet_drone.vehicle import VehicleParameters, load_racer_parameters
 
 
 class PyBulletPhysics:
-    def __init__(self, config: SimulationConfig, vehicle: VehicleParameters | None = None) -> None:
+    def __init__(self, config: SimulationConfig, vehicle: VehicleParameters | None = None, *,
+                 motor_dynamics: MotorDynamics | None = None, propeller_model: PropellerModel | None = None) -> None:
         self._config = config
         self._vehicle = vehicle if vehicle is not None else load_racer_parameters()
-        self._thrust_model = RotorThrustModel(self._vehicle.thrust_coefficient)
-        self._reaction_model = ReactionTorqueModel(self._vehicle.torque_coefficient, self._vehicle.reaction_torque_signs)
+        self._motors = motor_dynamics if motor_dynamics is not None else IdealMotorDynamics(self._vehicle.max_speed_rad_s)
+        self._propellers = propeller_model if propeller_model is not None else IdealPropellerModel(self._vehicle)
         self._rotor_speeds = (0.0, 0.0, 0.0, 0.0)
         self._p = None
         self._client: int | None = None
@@ -93,7 +94,9 @@ class PyBulletPhysics:
                 )
             self._episode_id = str(uuid4())
             self._step_index = 0
-            self._rotor_speeds = (0.0, 0.0, 0.0, 0.0)
+            self._rotor_speeds = self._validated_speeds(self._motors.reset(), 1)
+            if any(self._rotor_speeds):
+                raise BackendError("Motor reset must return stopped rotors")
             self._failed = False
             return self._state()
         except BaseException as exc:
@@ -118,9 +121,12 @@ class PyBulletPhysics:
         speeds = command.speeds_rad_s if command is not None else (0.0, 0.0, 0.0, 0.0)
         try:
             self._require_connection()
-            self._rotor_speeds = speeds  # Ideal motors respond instantaneously.
-            self._apply_rotor_thrust()
-            self._apply_reaction_torque()
+            actual = self._motors.update(speeds, self._config.simulation.timestep_s)
+            self._rotor_speeds = self._validated_speeds(actual, self._step_index + 1)
+            output = self._propellers.calculate(self._rotor_speeds)
+            self._validate_propeller_output(output)
+            self._apply_rotor_thrust(output)
+            self._apply_reaction_torque(output)
             self._p.stepSimulation(physicsClientId=self._client)
             self._step_index += 1
             return self._state()
@@ -132,18 +138,31 @@ class PyBulletPhysics:
                 raise
             raise BackendError(f"PyBullet step failed: {exc}") from exc
 
-    def _apply_rotor_thrust(self) -> None:
+    def _validated_speeds(self, speeds: RotorSpeeds, next_step: int) -> RotorSpeeds:
+        command = RotorCommand(speeds, self._episode_id, next_step)
+        command.validate_for(self._episode_id, next_step, self._vehicle.max_speed_rad_s)
+        return command.speeds_rad_s
+
+    @staticmethod
+    def _validate_propeller_output(output: PropellerOutput) -> None:
+        if not isinstance(output, PropellerOutput) or len(output.forces_n) != 4:
+            raise BackendError("Propeller model must return four forces and reaction torque")
+        for force in output.forces_n:
+            _values(force, 3, "propeller force")
+        _values(output.reaction_torque_nm, 3, "reaction torque")
+
+    def _apply_rotor_thrust(self, output: PropellerOutput) -> None:
         """Offset body-frame forces generate roll/pitch torque in PyBullet."""
-        forces = self._thrust_model.calculate(self._rotor_speeds)
+        forces = output.forces_n
         for force, position in zip(forces, self._vehicle.rotor_positions_m):
             self._p.applyExternalForce(
                 self._body, -1, force, position, self._p.LINK_FRAME,
                 physicsClientId=self._client,
             )
 
-    def _apply_reaction_torque(self) -> None:
+    def _apply_reaction_torque(self, output: PropellerOutput) -> None:
         """Apply signed rotor drag reaction to the base, in body coordinates."""
-        torque = self._reaction_model.calculate(self._rotor_speeds)
+        torque = output.reaction_torque_nm
         self._p.applyExternalTorque(
             self._body, -1, torque, self._p.LINK_FRAME, physicsClientId=self._client,
         )
