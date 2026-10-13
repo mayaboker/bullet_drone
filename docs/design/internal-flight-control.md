@@ -1,6 +1,7 @@
 # Internal flight control
 
-Status: **Implemented and verified**  
+Status: **Implemented and verified**
+
 Milestone: **Internal stabilization and ideal actuator boundaries**
 
 [Design menu](index.md) · [Saved plan and reference image](../../plan/0003-internal-flight-control.md) · [Rotor forces](rotor-forces-and-hover.md)

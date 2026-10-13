@@ -1,7 +1,8 @@
 # 0003: Internal flight-control pipeline
 
-Status: Completed (uncommitted)  
-Implementation commit: Pending
+Status: Completed
+
+Implementation commit: `f1da56732e54c6450aefd533401c4cd416ab2e23`
 
 ## Goal and reference
 
@@ -25,10 +26,10 @@ The image describes the broader architecture; this milestone implements internal
 
 HighLevelController, stabilization, control-feedback, motor-dynamics and propeller contracts are project-owned and PyBullet-independent. Ground truth is read-only; world angular velocity converts to body rates. Sensor slots remain unchanged. Controller selection belongs to composition. New control is API-only, with no production high-level controller or gain YAML. Existing rotor/environment semantics remain intact.
 
-Defer hover feedback control, joystick, ADRC, Godot, noisy sensors, real motor lag, battery behavior, and Betaflight integration. No dependency changes, commits or pushes are authorized.
+Defer hover feedback control, joystick, ADRC, Godot, noisy sensors, real motor lag, battery behavior, and Betaflight integration. No dependency changes are required. The user subsequently authorized committing the implementation and plan metadata; pushing remains outside scope.
 
 ## Verification
 
 Baseline: 82 tests passed. Verify configuration/default/rejection before resources, PID P/I/D/dt/saturation/reset/invalid input, Angle/Acro routing/quaternion wrapping/frame conversion/feedforward/thrust bypass/identity, ideal model equations and no duplicate torques, injected-source stabilization integration, and failure/interruption/cleanup. Run `uv run pytest -q`, preserve gravity/hover/CLI/headless checks, and check the relative image link.
 
-Outcome: `uv run pytest -q` passed **140 tests**. Locked headless gravity and open-loop hover CLI smoke checks completed 1200 steps each; hover ended at (0, 0, 1) m. Image SHA-256 matches the supplied original; relative image link resolves. `git diff --check` passed. No dependency changes or commits were made.
+Outcome: `uv run pytest -q` passed **140 tests**. Locked headless gravity and open-loop hover CLI smoke checks completed 1200 steps each; hover ended at (0, 0, 1) m. Image SHA-256 matches the supplied original; relative image link resolves. `git diff --check` passed. No dependency changes were made. The implementation was committed after the user requested it; this record stores its actual hash.
