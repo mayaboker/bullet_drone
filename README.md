@@ -92,6 +92,19 @@ pacing. The viewer remains open when the simulation ends.
 Both simulation entry points support `--renderer godot|pybullet|none`.
 See [configuration, coordinate frames and verification](docs/design/godot-rendering.md).
 
+## Position-controlled gate example
+
+```bash
+uv run examples/position/main.py --headless
+uv run examples/position/main.py --renderer godot
+```
+
+In VS Code, select **Run Godot and 3 position drones** to fly all three drones.
+Each takes off to 3 m, passes through the three gates, returns through them,
+and lands/disarms on its own starting pad. Each flight uses ground-truth XYZ
+position control through the software joystick. The existing hover example
+remains available. See [the route, controller and verification](docs/design/position-gate-demo.md).
+
 ## Internal control API
 
 Optional YAML `control.backend` defaults to `internal`. Selecting `betaflight`

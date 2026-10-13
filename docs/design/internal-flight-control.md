@@ -28,7 +28,7 @@ flowchart LR
     Step -->|DroneObservation| Source
 ```
 
-The main CLI runs the reusable simulation; the altitude-controlled hover demonstration lives in `examples/hover`. The stabilization path is composed through the Python API. The subsequent [altitude demo](altitude-hover-demo.md) adds a software joystick and high-level takeoff/hover/landing mission through a separate example entry point. ADRC, Godot rendering, and Betaflight transport remain future work.
+The main CLI runs the reusable simulation; the altitude-controlled hover demonstration lives in `examples/hover`. The stabilization path is composed through the Python API. The subsequent [altitude demo](altitude-hover-demo.md) adds a software joystick and high-level takeoff/hover/landing mission through a separate example entry point. The [position example](position-gate-demo.md) adds a reusable XY cascade and gate-course mission through the same joystick/stabilization path. [Godot rendering](godot-rendering.md) is implemented; ADRC and Betaflight transport remain future work.
 
 ## Selection and composition
 

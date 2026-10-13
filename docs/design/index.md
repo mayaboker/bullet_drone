@@ -1,6 +1,6 @@
 # Design documents
 
-This folder contains the design for a Python package that simulates a quadcopter using PyBullet. The entry-point, ideal rotor, internal stabilization, and altitude demo and Godot rendering milestones are implemented; broader architecture, sensor designs, and release requirements remain drafts. Each document states its implementation status.
+This folder contains the design for a Python package that simulates a quadcopter using PyBullet. The entry-point, ideal rotor, internal stabilization, and altitude demo, position gate mission, and Godot rendering milestones are implemented; broader architecture, sensor designs, and release requirements remain drafts. Each document states its implementation status.
 
 ## Architecture
 
@@ -9,6 +9,7 @@ This folder contains the design for a Python package that simulates a quadcopter
 - [Rotor forces and ideal hover](rotor-forces-and-hover.md): motor mixer, bounded commands, independent force models, equilibrium verification, and complete force roadmap.
 - [Internal flight control](internal-flight-control.md): API-only Angle/Acro stabilization, common PID, high-level command contract, controller selector, and ideal motor/propeller boundaries.
 - [Altitude hover demo](altitude-hover-demo.md): software joystick, altitude cascade, takeoff to 3 m, 20 s hover, landing/disarm, and example entry point.
+- [Position-controlled gate course](position-gate-demo.md): XYZ control through the joystick, gate traversal, return-to-home-pad landing, and three-drone tasks.
 - [Independent Godot FPV rendering](godot-rendering.md): configurable pose sources, UDP snapshots, lifecycle, world camera and top-left multi-publisher FPV panels, frames and verification.
 - [Sensors and drone observations](sensors.md): IMU, barometer, rangefinder, noise models, and separation of ground truth from measurements.
 - [Project guidance](../../AGENTS.md): SOLID rules, library choices, and development workflow.

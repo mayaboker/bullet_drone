@@ -182,6 +182,117 @@
             ],
             "dependsOrder": "parallel",
             "problemMatcher": []
+        },
+        {
+            "label": "Run position drone 1 with Godot",
+            "type": "process",
+            "command": "uv",
+            "args": [
+                "run",
+                "--locked",
+                "examples/position/main.py",
+                "--renderer",
+                "godot",
+                "--render-config",
+                "configs/render-godot.yaml",
+                "--initial-position",
+                "0",
+                "0",
+                "0.015"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            }
+        },
+        {
+            "label": "Run position drone 2 with Godot",
+            "type": "process",
+            "command": "uv",
+            "args": [
+                "run",
+                "--locked",
+                "examples/position/main.py",
+                "--renderer",
+                "godot",
+                "--render-config",
+                "configs/render-godot-drone-2.yaml",
+                "--initial-position",
+                "1.5",
+                "0.25",
+                "0.015"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            }
+        },
+        {
+            "label": "Run position drone 3 with Godot",
+            "type": "process",
+            "command": "uv",
+            "args": [
+                "run",
+                "--locked",
+                "examples/position/main.py",
+                "--renderer",
+                "godot",
+                "--render-config",
+                "configs/render-godot-drone-3.yaml",
+                "--initial-position",
+                "3",
+                "0.5",
+                "0.015"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            }
+        },
+        {
+            "label": "Run Godot and 3 position drones",
+            "dependsOn": [
+                "Run Godot viewer",
+                "Run position drone 1 with Godot",
+                "Run position drone 2 with Godot",
+                "Run position drone 3 with Godot"
+            ],
+            "dependsOrder": "parallel",
+            "problemMatcher": []
+        },
+        {
+            "label": "Run position gate mission",
+            "type": "process",
+            "command": "uv",
+            "args": [
+                "run",
+                "--locked",
+                "examples/position/main.py"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            }
         }
     ]
 }
