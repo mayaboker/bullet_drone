@@ -110,6 +110,20 @@ pad and land/disarm. Scroll the FPV panel stack to see cameras 4–6.
 The existing hover example
 remains available. See [the route, controller and verification](docs/design/position-gate-demo.md).
 
+## Position PID and virtual-joystick chain check
+
+```bash
+uv run examples/position_control/main.py --headless
+uv run examples/position_control/main.py --headless --trace /tmp/control-chain.csv
+```
+
+This separate example takes off, flies a 2 m square, changes altitude and yaw,
+returns home, lands and disarms. It runs position PID → velocity PID → virtual
+joystick → stabilization → mixer → motors/propellers → PyBullet, records every
+completed-step link, and verifies the chain automatically. In VS Code, use
+**Check position control chain (headless)** or **Run Godot and position control chain**.
+See [the control flow, trace and checks](docs/design/position-control-chain.md).
+
 ## Internal control API
 
 Optional YAML `control.backend` defaults to `internal`. Selecting `betaflight`

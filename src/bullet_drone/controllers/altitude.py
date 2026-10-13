@@ -1,8 +1,17 @@
 """Altitude → vertical velocity → acceleration → collective thrust (SI units)."""
 
+from dataclasses import dataclass
+
 from bullet_drone.commands import InvalidCommandError, _finite
 from bullet_drone.config import ConfigurationError, _number
 from bullet_drone.controllers.pid import PID, PidSettings, clamp
+
+
+@dataclass(frozen=True, slots=True)
+class AltitudeControlOutput:
+    velocity_target_m_s: float
+    acceleration_m_s2: float
+    thrust_n: float
 
 
 class AltitudeController:
@@ -21,8 +30,10 @@ class AltitudeController:
             raise ConfigurationError("Altitude control requires thrust capacity greater than weight")
         self.position = PID(position_pid)
         self.velocity = PID(velocity_pid)
+        self.last_output: AltitudeControlOutput | None = None
 
     def reset(self) -> None:
+        self.last_output = None
         self.position.reset()
         self.velocity.reset()
 
@@ -40,4 +51,6 @@ class AltitudeController:
         desired_velocity = clamp(self.position.update(target, altitude, dt), limit)
         acceleration = self.velocity.update(desired_velocity, velocity, dt)
         thrust = _finite(self.mass_kg * (self.gravity_m_s2 + acceleration), "altitude thrust")
-        return min(self.max_thrust_n, max(0.0, thrust))
+        bounded_thrust = min(self.max_thrust_n, max(0.0, thrust))
+        self.last_output = AltitudeControlOutput(desired_velocity, acceleration, bounded_thrust)
+        return bounded_thrust
