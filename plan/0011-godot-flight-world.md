@@ -1,7 +1,7 @@
 # Godot flight-course scenery
 
 Status: Completed
-Implementation commit: Pending
+Implementation commit: `7b564aca3f298052ad3971729cd64fef5bd9c76b`
 
 ## Goal and scope
 
@@ -26,4 +26,4 @@ Implemented the focused procedural flight-world module, preserving viewer and ca
 
 Verification: Godot 4.3 editor import/parse and registry checks passed. The visible two-publisher smoke passed world camera, panel placement, titles, independent resolutions/FOV, resize/zoom and staleness checks. Captured and inspected /tmp/bullet-drone-godot.png: the course, nested gates, landing pads, trees, hills and shadows render in both world and FPV views. Whitespace checks passed. Python was unchanged.
 
-Implementation commit: Pending. No commit or push requested.
+Implementation committed as `7b564aca3f298052ad3971729cd64fef5bd9c76b` at the user’s request. No push requested.

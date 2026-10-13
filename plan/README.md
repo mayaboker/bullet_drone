@@ -14,6 +14,6 @@ Save agreed implementation plans here before implementation. This index records 
 | [0008: VS Code Godot tasks](0008-vscode-godot-tasks.md) | Separate viewer and one-drone tasks with a parallel group launcher. | Completed | `c5132cad658ce4aca69cf5b907c196ec18c1fe8b` |
 | [0009: World camera and preview panels](0009-world-camera-preview-panels.md) | Full-window spectator camera with titled top-left drone FPV panels. | Completed | `c5132cad658ce4aca69cf5b907c196ec18c1fe8b` |
 | [0010: Three-drone launch task](0010-three-drone-vscode-task.md) | Godot and three hover simulations with unique IDs and staggered initial positions. | Completed | `869f6b65bb079aa0c8f67dcfcae6947c4b5682e5` |
-| [0011: Godot flight-course scenery](0011-godot-flight-world.md) | Outdoor course with gates, pads, trees, hills and sky lighting. | Completed | Pending |
+| [0011: Godot flight-course scenery](0011-godot-flight-world.md) | Outdoor course with gates, pads, trees, hills and sky lighting. | Completed | `7b564aca3f298052ad3971729cd64fef5bd9c76b` |
 
 These first two records were saved retrospectively from the agreed designs and completed work. The first commit is the initial project baseline, which also includes the racer URDF update. Future plans are saved before implementation, with `Pending` in the commit column, then updated with the actual implementation hash after committing. A subsequent documentation commit stores that metadata; its hash does not replace the implementation hash.
