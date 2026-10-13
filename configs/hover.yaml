@@ -1,0 +1,12 @@
+simulation:
+  timestep_s: 0.004166666666666667
+  max_steps: 1200
+  gui: true
+  gravity_m_s2: [0.0, 0.0, -9.81]
+
+drone:
+  mass_kg: 1.0
+  initial_position_m: [0.0, 0.0, 1.0]
+
+flight:
+  mode: hover

@@ -10,6 +10,15 @@ A vehicle with four rotors whose combined thrust and torque determine its motion
 **Rotor command**:
 A requested angular speed for each of the quadcopter's four rotors, in a declared rotor order.
 
+**Wrench command**:
+A requested collective thrust and body torque to be produced by the rotors.
+
+**Motor allocation**:
+The distribution of a wrench command across rotor outputs, together with the achievable thrust and torque after actuator limits.
+
+**Ideal hover**:
+An equilibrium from level rest where rotor thrust balances weight and combined torque is zero; it does not imply active stabilization.
+
 **Drone state**:
 The quadcopter's physical condition at a specific simulation time, including its pose, velocities, and rotor speeds.
 

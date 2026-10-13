@@ -12,6 +12,13 @@ These instructions apply throughout this repository.
 
 Prefer simple composition and small contracts. Introduce abstractions only when they express a real component boundary.
 
+## Physical effects
+
+- Implement each physical effect in its own named method or focused Python module, with independent verification.
+- Separate mixing, actuator dynamics, force calculation, and PyBullet application. Document units, coordinate frames, inputs, outputs, and assumptions.
+- Never apply the same effect twice: PyBullet owns gravity/contact, and applying thrust at rotor positions already generates lever-arm torque.
+- Track future effects in the [force roadmap](docs/design/rotor-forces-and-hover.md). Treat wind, battery behavior, and motor response as inputs or dynamics rather than standalone forces.
+
 ## Libraries and tooling
 
 - Use `src/bullet_drone/main.py` as the application entry point. Its `main()` function constructs and uses a CLI helper, loads configuration, wires components, and starts the runner.
@@ -29,4 +36,4 @@ Prefer simple composition and small contracts. Introduce abstractions only when 
 - Implement only the authorized milestone. Add advanced physics in later steps rather than expanding a basic entry-point change.
 - Validate behavior appropriate to the change, including lifecycle and cleanup when changing simulation execution.
 
-The [first simulation entry-point design](docs/design/simulation-entry-point.md) defines the next simulation milestone. This guidance file does not itself authorize its implementation or dependency installation.
+The [entry-point design](docs/design/simulation-entry-point.md) and [ideal rotor milestone](docs/design/rotor-forces-and-hover.md) describe implemented behavior. Later roadmap items do not themselves authorize implementation or dependency installation.

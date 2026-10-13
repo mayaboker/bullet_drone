@@ -16,6 +16,8 @@ The environment returns `DroneObservation` from the first milestone, with `groun
 
 This document describes the implemented first milestone. The broader 0.1.0 architecture and later sensor milestone remain planned.
 
+The subsequent [rotor forces and hover milestone](rotor-forces-and-hover.md) is also implemented. The diagrams below retain the basic entry-point structure; current `step()` additionally accepts episode-scoped `RotorCommand` actions, and the runner supports an optional command provider. `None` retains gravity-only behavior. Optional YAML `flight.mode` selects `gravity` (default) or `hover`.
+
 ## Basic block diagram
 
 Solid arrows describe the main execution and state flow. Dashed arrows show diagnostics and future consumers.
@@ -136,7 +138,7 @@ The backend initializes its owned world on reset; construction stores validated 
 | `step(action=None) → DroneObservation` | Advance exactly one fixed physics step and return the resulting state. |
 | `close() → None` | Release owned resources. Repeated calls are harmless. |
 
-Initially only `None` is accepted as an action. Reject other values before advancing physics; do not silently ignore commands. Later rotor-command support can extend this boundary while retaining the runner's loop structure.
+The original milestone accepted only `None`. Current actions are `RotorCommand` or `None`; invalid actions are rejected before force application or stepping. The [rotor milestone](rotor-forces-and-hover.md) specifies units, limits, episode validation, and allocation behavior while preserving the loop structure.
 
 `DroneState` is an immutable project-owned record containing episode identity, step index, simulation time, position, quaternion orientation ordered `(x, y, z, w)`, and world-frame linear and angular velocity. No PyBullet handles or mutable backend references escape the backend. `DroneObservation` and `SensorReadings` are also immutable; initially all three optional sensor reading fields are `None`.
 

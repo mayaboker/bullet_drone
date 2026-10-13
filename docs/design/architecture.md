@@ -15,7 +15,7 @@ The central architectural goal is to separate physical evolution from visual obs
 
 The first version targets one quadcopter in a configured scene, fixed-step simulation, direct rotor commands, camera rendering, telemetry recording, and plotting. Flight controllers may be supplied by callers through the command interface. Built-in autopilots, hardware connections, ROS integration, multiple drones, and advanced aerodynamic models are outside the initial scope.
 
-This document describes the intended overall design. The [first simulation entry-point milestone](simulation-entry-point.md) is implemented with gravity-only physics, GUI/headless modes, and immutable observations. Rotor dynamics, sensor models, independent rendering, and telemetry consumers remain future work before the complete 0.1.0 scope.
+This document describes the intended overall design. The [entry-point milestone](simulation-entry-point.md) and [ideal rotor/hover milestone](rotor-forces-and-hover.md) are implemented with GUI/headless modes, bounded motor allocation, rotor forces, and immutable observations. Motor lag, sensor models, independent rendering, and telemetry consumers remain future work before the complete 0.1.0 scope.
 
 ## 2. Design principles
 
@@ -200,7 +200,7 @@ Keep optional display and plotting dependencies outside the minimum headless phy
 
 The [0.1.0 requirements overview](requirements/v0.1.0/index.md) links to independently identifiable requirements for [physics](requirements/v0.1.0/physics.md), [software](requirements/v0.1.0/software.md), and [architecture and integration](requirements/v0.1.0/architecture.md). Requirement status is draft until reviewed.
 
-Initial verification covers analytical gravity-only physics, lifecycle contracts, headless and built-in GUI operation, and failure/interruption cleanup. Future verification should add rotor dynamics, rendering in another process, snapshot/frame correlation, recording completeness, and controlled consumer failures. Each requirement document describes observable acceptance evidence; the implemented entry-point milestone is a subset of those requirements.
+Verification covers free fall and contact, ideal hover, rotor force and torque response, mixer saturation, command validation, lifecycle contracts, GUI/headless operation, and failure/interruption cleanup. Future verification should add motor lag and electrical dynamics, independent rendering, snapshot/frame correlation, recording completeness, and controlled consumer failures. The implemented milestones remain a subset of the broader requirements.
 
 ## 12. Open decisions for the next design revision
 

@@ -1,6 +1,6 @@
 """Load and validate simulation configuration before acquiring resources."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from math import isfinite
 from pathlib import Path
 
@@ -59,9 +59,24 @@ class DroneSettings:
 
 
 @dataclass(frozen=True, slots=True)
+class FlightSettings:
+    mode: str = "gravity"
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.mode, str) or self.mode not in ("gravity", "hover"):
+            raise ConfigurationError("flight.mode must be 'gravity' or 'hover'")
+
+
+@dataclass(frozen=True, slots=True)
 class SimulationConfig:
     simulation: SimulationSettings
     drone: DroneSettings
+    flight: FlightSettings = field(default_factory=FlightSettings)
+
+    def __post_init__(self) -> None:
+        gravity = self.simulation.gravity_m_s2
+        if self.flight.mode == "hover" and (gravity[0] != 0 or gravity[1] != 0 or gravity[2] >= 0):
+            raise ConfigurationError("Hover mode requires downward vertical gravity")
 
 
 def _mapping(value: object, name: str, required: set[str], optional: set[str] | None = None) -> dict:
@@ -82,10 +97,11 @@ class YamlConfigLoader:
             data = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
         except (OSError, UnicodeError, yaml.YAMLError) as exc:
             raise ConfigurationError(f"Cannot read YAML configuration {path}: {exc}") from exc
-        root = _mapping(data, "configuration", {"simulation", "drone"})
+        root = _mapping(data, "configuration", {"simulation", "drone"}, {"flight"})
         simulation = _mapping(
             root["simulation"], "simulation",
             {"timestep_s", "max_steps", "gravity_m_s2"}, {"gui"},
         )
         drone = _mapping(root["drone"], "drone", {"mass_kg", "initial_position_m"})
-        return SimulationConfig(SimulationSettings(**simulation), DroneSettings(**drone))
+        flight = FlightSettings(**_mapping(root["flight"], "flight", {"mode"})) if "flight" in root else FlightSettings()
+        return SimulationConfig(SimulationSettings(**simulation), DroneSettings(**drone), flight)

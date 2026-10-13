@@ -31,6 +31,18 @@ def test_cleanup_failure_does_not_hide_original_error():
         SimulationRunner().run(env, 5)
 
 
+@pytest.mark.parametrize("failure", [RuntimeError("command provider failure"), KeyboardInterrupt()])
+def test_command_provider_failure_closes_environment(failure):
+    env = Mock()
+    env.reset.return_value = observation(0)
+    provider = Mock()
+    provider.command.side_effect = failure
+    with pytest.raises(type(failure)):
+        SimulationRunner().run(env, 5, command_provider=provider)
+    env.step.assert_not_called()
+    env.close.assert_called_once()
+
+
 def test_pacing_uses_simulation_time_without_skipping_steps(monkeypatch):
     env = Mock()
     env.reset.return_value = observation(0)

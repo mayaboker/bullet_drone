@@ -6,14 +6,22 @@ import os
 import sys
 from uuid import uuid4
 
+from bullet_drone.commands import InvalidCommandError, RotorCommand
 from bullet_drone.config import SimulationConfig
 from bullet_drone.contracts import BackendError, LifecycleError
+from bullet_drone.forces.reaction_torque import ReactionTorqueModel
+from bullet_drone.forces.thrust import RotorThrustModel
 from bullet_drone.models import DroneState
+from bullet_drone.vehicle import VehicleParameters, load_racer_parameters
 
 
 class PyBulletPhysics:
-    def __init__(self, config: SimulationConfig) -> None:
+    def __init__(self, config: SimulationConfig, vehicle: VehicleParameters | None = None) -> None:
         self._config = config
+        self._vehicle = vehicle if vehicle is not None else load_racer_parameters()
+        self._thrust_model = RotorThrustModel(self._vehicle.thrust_coefficient)
+        self._reaction_model = ReactionTorqueModel(self._vehicle.torque_coefficient, self._vehicle.reaction_torque_signs)
+        self._rotor_speeds = (0.0, 0.0, 0.0, 0.0)
         self._p = None
         self._client: int | None = None
         self._body: int | None = None
@@ -85,6 +93,7 @@ class PyBulletPhysics:
                 )
             self._episode_id = str(uuid4())
             self._step_index = 0
+            self._rotor_speeds = (0.0, 0.0, 0.0, 0.0)
             self._failed = False
             return self._state()
         except BaseException as exc:
@@ -99,11 +108,19 @@ class PyBulletPhysics:
                 raise BackendError(f"Could not initialize PyBullet world: {exc}") from exc
             raise
 
-    def step(self) -> DroneState:
+    def step(self, command: RotorCommand | None = None) -> DroneState:
         if self._closed or self._body is None or self._failed:
             raise LifecycleError("Physics must be reset before stepping and cannot be closed or failed")
+        if command is not None:
+            if not isinstance(command, RotorCommand):
+                raise InvalidCommandError("Physics requires a RotorCommand or None")
+            command.validate_for(self._episode_id, self._step_index + 1, self._vehicle.max_speed_rad_s)
+        speeds = command.speeds_rad_s if command is not None else (0.0, 0.0, 0.0, 0.0)
         try:
             self._require_connection()
+            self._rotor_speeds = speeds  # Ideal motors respond instantaneously.
+            self._apply_rotor_thrust()
+            self._apply_reaction_torque()
             self._p.stepSimulation(physicsClientId=self._client)
             self._step_index += 1
             return self._state()
@@ -114,6 +131,22 @@ class PyBulletPhysics:
             if isinstance(exc, BackendError):
                 raise
             raise BackendError(f"PyBullet step failed: {exc}") from exc
+
+    def _apply_rotor_thrust(self) -> None:
+        """Offset body-frame forces generate roll/pitch torque in PyBullet."""
+        forces = self._thrust_model.calculate(self._rotor_speeds)
+        for force, position in zip(forces, self._vehicle.rotor_positions_m):
+            self._p.applyExternalForce(
+                self._body, -1, force, position, self._p.LINK_FRAME,
+                physicsClientId=self._client,
+            )
+
+    def _apply_reaction_torque(self) -> None:
+        """Apply signed rotor drag reaction to the base, in body coordinates."""
+        torque = self._reaction_model.calculate(self._rotor_speeds)
+        self._p.applyExternalTorque(
+            self._body, -1, torque, self._p.LINK_FRAME, physicsClientId=self._client,
+        )
 
     def _require_connection(self) -> None:
         if self._client is None or not self._p.isConnected(self._client):
@@ -127,6 +160,7 @@ class PyBulletPhysics:
             simulation_time_s=self._step_index * self._config.simulation.timestep_s,
             position_m=tuple(position), orientation_xyzw=tuple(orientation),
             linear_velocity_m_s=tuple(linear), angular_velocity_rad_s=tuple(angular),
+            rotor_speeds_rad_s=self._rotor_speeds,
         )
 
     def _disconnect(self) -> None:

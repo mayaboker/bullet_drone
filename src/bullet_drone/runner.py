@@ -4,7 +4,7 @@ import time
 
 from loguru import logger
 
-from bullet_drone.contracts import SimulationEnvironment
+from bullet_drone.contracts import CommandProvider, SimulationEnvironment
 from bullet_drone.models import DroneObservation
 
 
@@ -12,6 +12,7 @@ class SimulationRunner:
     def run(
         self, environment: SimulationEnvironment, max_steps: int,
         pace_wall_time: bool = False,
+        command_provider: CommandProvider | None = None,
     ) -> DroneObservation:
         try:
             if type(max_steps) is not int or max_steps <= 0:
@@ -19,7 +20,10 @@ class SimulationRunner:
             observation = environment.reset()
             start = time.monotonic()
             for _ in range(max_steps):
-                observation = environment.step()
+                if command_provider is None:
+                    observation = environment.step()
+                else:
+                    observation = environment.step(command_provider.command(observation))
                 if pace_wall_time:
                     remaining = start + observation.ground_truth.simulation_time_s - time.monotonic()
                     if remaining > 0:

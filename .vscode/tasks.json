@@ -21,6 +21,15 @@
                 "panel": "dedicated",
                 "clear": true
             }
+        },
+        {
+            "label": "Run hover simulation",
+            "type": "process",
+            "command": "uv",
+            "args": ["run", "--locked", "bullet-drone", "--config", "configs/hover.yaml"],
+            "options": {"cwd": "${workspaceFolder}"},
+            "problemMatcher": [],
+            "presentation": {"reveal": "always", "panel": "dedicated", "clear": true}
         }
     ]
 }

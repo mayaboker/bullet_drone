@@ -10,6 +10,6 @@ Local modifications:
 - Add individual propeller visuals to the existing fixed propeller links. Front means body positive X: `prop0_link` and `prop3_link` are orange, while the rear pair are blue.
 - Preserve the original collision cylinder (radius 0.06 m, height 0.025 m), inertial definition, fixed links, and custom rotor properties.
 
-At runtime the YAML mass overrides the nominal 0.830 kg URDF mass. The base inertia is scaled by the same mass ratio. Rotor links remain massless, and no motor forces are applied in this milestone.
+At runtime the YAML mass overrides the nominal 0.830 kg URDF mass. The base inertia is scaled by the same mass ratio. Rotor links remain massless. Ideal rotor thrust and reaction torque use the upstream coefficients, converted from RPM squared to rad/s squared. Forces act on the base at the rotor inertial-origin positions. Capacity is derived from nominal mass and thrust-to-weight ratio and does not increase when YAML mass is increased.
 
 Meshes and URDF are bundled with the Python package; simulation does not download assets or require Gymnasium. Reproduce the assets with `uv run python tools/build_racer_assets.py` from the repository. The upstream MIT license is included in [LICENSE.upstream](LICENSE.upstream).

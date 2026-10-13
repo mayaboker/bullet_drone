@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 
 type Vector3 = tuple[float, float, float]
 type Quaternion = tuple[float, float, float, float]
+type RotorSpeeds = tuple[float, float, float, float]
 
 
 @dataclass(frozen=True, slots=True)
@@ -15,6 +16,7 @@ class DroneState:
     orientation_xyzw: Quaternion
     linear_velocity_m_s: Vector3
     angular_velocity_rad_s: Vector3
+    rotor_speeds_rad_s: RotorSpeeds = (0.0, 0.0, 0.0, 0.0)
 
 
 @dataclass(frozen=True, slots=True)
