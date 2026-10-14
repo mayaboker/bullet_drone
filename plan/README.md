@@ -21,6 +21,6 @@ Save agreed implementation plans here before implementation. This index records 
 | [0015: Wheel and library guide](0015-wheel-and-library-guide.md) | Build contents, external uv installation, and runnable simulation-library examples. | Completed | `6e8b39b7791eed487a9e6fcc0cc9e9e9addab9fb` |
 | [0016: README renderer task table](0016-readme-render-task-table.md) | Main VS Code simulation/render launchers with exact task names and short descriptions. | Completed | `00cb931dc1d681783c82b211a56220a88a3b6bda` |
 | [0017: Godot render FPS](0017-godot-render-fps.md) | Top-right render-frame-rate overlay with resize anchoring and camera input pass-through. | Completed | `6e8b39b7791eed487a9e6fcc0cc9e9e9addab9fb` |
-| [0018: Godot NVIDIA offload](0018-godot-nvidia-offload.md) | NVIDIA PRIME/GLX environment on the shared Godot viewer launch task. | Completed | Pending |
+| [0018: Godot NVIDIA offload](0018-godot-nvidia-offload.md) | NVIDIA PRIME/GLX environment on the shared Godot viewer launch task. | Completed | `a892227962aa74e1c680481979471ae799060d43` |
 
 These first two records were saved retrospectively from the agreed designs and completed work. The first commit is the initial project baseline, which also includes the racer URDF update. Future plans are saved before implementation, with `Pending` in the commit column, then updated with the actual implementation hash after committing. A subsequent documentation commit stores that metadata; its hash does not replace the implementation hash.
