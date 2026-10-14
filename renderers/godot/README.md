@@ -7,6 +7,13 @@ godot --path renderers/godot
 uv run examples/hover/main.py --renderer godot --render-config configs/render-godot.yaml
 ```
 
+The VS Code **Run Godot viewer** task sets NVIDIA PRIME/GLX environment variables;
+all grouped Godot simulation tasks use this launcher. The equivalent shell command is:
+
+```bash
+__NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia godot --path renderers/godot
+```
+
 The application listens on loopback UDP 9870. Override with `-- --port=9871`
 and match the publisher YAML. Multiple publishers must use distinct drone IDs.
 The world camera fills the window; labeled FPV panels appear at the top left.

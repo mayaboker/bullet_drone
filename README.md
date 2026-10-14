@@ -56,6 +56,8 @@ see the bundled [asset notes](src/bullet_drone/assets/racer/README.md) for prove
 
 Open **Tasks: Run Task** in VS Code and select a task from this table.
 Godot tasks launch the viewer and simulation together; Godot 4.3+ must be on PATH.
+The shared **Run Godot viewer** task sets `__NV_PRIME_RENDER_OFFLOAD=1` and
+`__GLX_VENDOR_LIBRARY_NAME=nvidia` for its Godot process.
 
 | Task name | Short description |
 | --- | --- |
