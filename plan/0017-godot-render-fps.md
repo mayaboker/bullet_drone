@@ -1,7 +1,7 @@
 # Godot render FPS indicator
 
 Status: Completed
-Implementation commit: Pending
+Implementation commit: `6e8b39b7791eed487a9e6fcc0cc9e9e9addab9fb`
 
 ## Goal and steps
 
@@ -9,7 +9,7 @@ Add a readable top-right FPS overlay to the Godot world camera view. Display the
 
 ## Interfaces and scope
 
-Viewer-only change; no Python, UDP, physics or camera-settings changes. The metric is global Godot render FPS, not the 240 Hz simulation rate or publisher update rate. Existing drone panels and titles remain unchanged. No commit or push requested.
+Viewer-only change; no Python, UDP, physics or camera-settings changes. The metric is global Godot render FPS, not the 240 Hz simulation rate or publisher update rate. Existing drone panels and titles remain unchanged. Committed at the user’s request; no push requested.
 
 ## Verification
 
@@ -21,4 +21,4 @@ Added a top-right dark-backed `Render: N FPS` overlay using Engine.get_frames_pe
 
 Verification: Godot 4.3 editor import/parse and the visible two-publisher smoke passed, including positive numeric FPS text, right anchoring after resize, input pass-through and existing camera/panel/staleness checks. Captured and inspected /tmp/bullet-drone-godot.png; the indicator reads Render: 60 FPS and does not obscure camera panels. Whitespace checks passed. Python is unchanged.
 
-Implementation commit remains Pending; no commit or push requested.
+Implementation committed as `6e8b39b7791eed487a9e6fcc0cc9e9e9addab9fb`. No push requested.

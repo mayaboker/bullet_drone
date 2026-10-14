@@ -18,8 +18,8 @@ Save agreed implementation plans here before implementation. This index records 
 | [0012: Position gate mission](0012-position-gate-mission.md) | Position-controlled takeoff, gate traversal, return and own-pad landing, with three-drone tasks. | Completed | `d99106e7a15fee202e0c77c72dfaa3fac5996082` |
 | [0013: Six mirrored position drones](0013-six-position-drones.md) | Three additional opposite-side pads and a six-drone position-flight launcher. | Completed | `91644751a68d664c76f6527756299d626ecfee27` |
 | [0014: Position control-chain example](0014-position-control-chain-example.md) | Position/velocity PID through virtual joystick to physics, with per-stage trace and full-chain verification. | Completed | `43eff356d22f0fb20f4fe695dcf0463b84129e23` |
-| [0015: Wheel and library guide](0015-wheel-and-library-guide.md) | Build contents, external uv installation, and runnable simulation-library examples. | Completed | Pending |
-| [0016: README renderer task table](0016-readme-render-task-table.md) | Main VS Code simulation/render launchers with exact task names and short descriptions. | Completed | Pending |
-| [0017: Godot render FPS](0017-godot-render-fps.md) | Top-right render-frame-rate overlay with resize anchoring and camera input pass-through. | Completed | Pending |
+| [0015: Wheel and library guide](0015-wheel-and-library-guide.md) | Build contents, external uv installation, and runnable simulation-library examples. | Completed | `6e8b39b7791eed487a9e6fcc0cc9e9e9addab9fb` |
+| [0016: README renderer task table](0016-readme-render-task-table.md) | Main VS Code simulation/render launchers with exact task names and short descriptions. | Completed | `00cb931dc1d681783c82b211a56220a88a3b6bda` |
+| [0017: Godot render FPS](0017-godot-render-fps.md) | Top-right render-frame-rate overlay with resize anchoring and camera input pass-through. | Completed | `6e8b39b7791eed487a9e6fcc0cc9e9e9addab9fb` |
 
 These first two records were saved retrospectively from the agreed designs and completed work. The first commit is the initial project baseline, which also includes the racer URDF update. Future plans are saved before implementation, with `Pending` in the commit column, then updated with the actual implementation hash after committing. A subsequent documentation commit stores that metadata; its hash does not replace the implementation hash.

@@ -1,7 +1,7 @@
 # Wheel packaging and external library-usage guide
 
 Status: Completed
-Implementation commit: Pending
+Implementation commit: `6e8b39b7791eed487a9e6fcc0cc9e9e9addab9fb`
 
 ## Goal and implementation steps
 
@@ -23,4 +23,4 @@ Created the wheel-packaging and external-project usage guide and linked it from 
 
 Verification: built a fresh 0.1.0 wheel in /tmp/bullet-drone-packaging-guide-gn4xz6lf/dist, inspected inclusion/exclusion claims, and installed it with uv add in an independent temporary Python 3.12 project. Verified imports resolve to that project's site-packages rather than the source tree. Both exact documented simulation examples completed 240 steps and one simulated second, loading the packaged racer assets. The controller-import snippet succeeded, and an in-process check confirmed the physics client disconnected after runner completion. All local guide/README/menu links and whitespace checks passed.
 
-No packaging, library API or dependency changes. Implementation commit remains Pending; no commit or push requested.
+No packaging, library API or dependency changes. Implementation committed as `6e8b39b7791eed487a9e6fcc0cc9e9e9addab9fb`. No push requested.
