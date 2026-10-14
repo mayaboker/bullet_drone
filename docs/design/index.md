@@ -4,6 +4,8 @@ This folder contains the design for a Python package that simulates a quadcopter
 
 ## Architecture
 
+- [Wheel packaging and library usage](../packaging-and-library-usage.md): wheel contents, uv installation into a separate project, public imports and runnable simulation examples.
+
 - [Initial architecture](architecture.md): project goals, component diagram, responsibilities, interfaces, and open decisions.
 - [First simulation entry point](simulation-entry-point.md): Click CLI, YAML configuration, GUI/headless modes, environment lifecycle, gravity-only stepping, and Loguru diagnostics.
 - [Rotor forces and ideal hover](rotor-forces-and-hover.md): motor mixer, bounded commands, independent force models, equilibrium verification, and complete force roadmap.

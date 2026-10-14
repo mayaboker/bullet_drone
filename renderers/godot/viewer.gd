@@ -9,6 +9,9 @@ var grid: GridContainer
 var waiting: Label
 var preview_scroll: ScrollContainer
 var world_camera: Camera3D
+var fps_label: Label
+var fps_panel: PanelContainer
+var _fps_elapsed = 0.0
 
 func material(color: Color) -> StandardMaterial3D:
 	var m = StandardMaterial3D.new()
@@ -39,6 +42,27 @@ func _ready():
 	add_child(world_camera)
 	var canvas = CanvasLayer.new()
 	add_child(canvas)
+	fps_panel = PanelContainer.new()
+	fps_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	canvas.add_child(fps_panel)
+	fps_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	fps_panel.offset_left = -176
+	fps_panel.offset_right = -12
+	fps_panel.offset_top = 12
+	fps_panel.offset_bottom = 48
+	var fps_style = StyleBoxFlat.new()
+	fps_style.bg_color = Color(0.025, 0.04, 0.07, 0.9)
+	fps_style.content_margin_left = 12
+	fps_style.content_margin_right = 12
+	fps_style.content_margin_top = 6
+	fps_style.content_margin_bottom = 6
+	fps_panel.add_theme_stylebox_override("panel", fps_style)
+	fps_label = Label.new()
+	fps_label.text = "Render: 0 FPS"
+	fps_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fps_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	fps_label.add_theme_font_size_override("font_size", 16)
+	fps_panel.add_child(fps_label)
 	preview_scroll = ScrollContainer.new()
 	preview_scroll.position = Vector2(12, 12)
 	preview_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -153,7 +177,11 @@ func apply_packet(id: String):
 	layout()
 	entry.camera.transform = pose * Transform3D(Registry.camera_basis(c.downward_tilt_deg), Registry.position(c.mount_position_body_m))
 
-func _process(_delta):
+func _process(delta):
+	_fps_elapsed += delta
+	if _fps_elapsed >= 0.25:
+		fps_label.text = "Render: %d FPS" % Engine.get_frames_per_second()
+		_fps_elapsed = fmod(_fps_elapsed, 0.25)
 	var now = Time.get_ticks_msec() / 1000.0
 	var changed: Dictionary = {}
 	while udp.get_available_packet_count() > 0:

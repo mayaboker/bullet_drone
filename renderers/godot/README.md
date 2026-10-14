@@ -10,6 +10,7 @@ uv run examples/hover/main.py --renderer godot --render-config configs/render-go
 The application listens on loopback UDP 9870. Override with `-- --port=9871`
 and match the publisher YAML. Multiple publishers must use distinct drone IDs.
 The world camera fills the window; labeled FPV panels appear at the top left.
+A top-right FPS indicator shows the viewer’s render frame rate.
 Right-drag in the world view to orbit and scroll to zoom; scroll over the panels
 to browse additional drones. The window stays open after publishers stop; tiles show STALE after two seconds.
 

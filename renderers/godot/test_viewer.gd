@@ -9,6 +9,12 @@ func check():
 	await create_timer(3).timeout
 	print("Checking tiles: ", viewer.tiles.keys())
 	assert(viewer.tiles.size() == 2, "Two UDP publishers must create two views")
+	assert(viewer.fps_label.text.begins_with("Render: "))
+	assert(viewer.fps_label.text.ends_with(" FPS"))
+	assert(viewer.fps_label.text.get_slice(" ", 1).to_int() > 0)
+	assert(viewer.fps_panel.anchor_right == 1.0)
+	assert(viewer.fps_panel.mouse_filter == Control.MOUSE_FILTER_IGNORE)
+	assert(viewer.fps_label.mouse_filter == Control.MOUSE_FILTER_IGNORE)
 	assert(viewer.grid.columns == 1)
 	assert(root.get_camera_3d() == viewer.world_camera)
 	assert(viewer.preview_scroll.position == Vector2(12,12))
@@ -37,6 +43,8 @@ func check():
 	root.size = Vector2i(1000,700)
 	viewer.layout()
 	assert(viewer.preview_scroll.size.x <= 400)
+	await process_frame
+	assert(abs(viewer.fps_panel.get_global_rect().end.x - (root.size.x - 12)) < 1)
 	root.size = original_size
 	viewer.layout()
 	await RenderingServer.frame_post_draw
