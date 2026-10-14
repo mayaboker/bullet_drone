@@ -1,7 +1,7 @@
 # 18-channel RC interface migration
 
 Status: Completed
-Implementation commit: Pending
+Implementation commit: cd5d4497bc270373af3596843f3e3218e74a4d20
 
 ## Goal and scope
 Replace the public joystick boundary with RcInput/RcSimulation in Bullet Drone
@@ -54,4 +54,4 @@ Verification passed:
 
 No dependency changes. mcap_bug remains unchanged and the unrelated untracked
 Zenoh document was preserved. The user subsequently requested commit and push;
-the implementation hash will be recorded in a separate metadata commit.
+the actual implementation hash is recorded above in a separate metadata commit.
