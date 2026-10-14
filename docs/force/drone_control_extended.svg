@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1820" viewBox="0 0 1500 1820">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10Z" fill="#475569"/></marker><marker id="cyan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10Z" fill="#0891b2"/></marker><marker id="green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10Z" fill="#059669"/></marker></defs>
+<style>text{font-family:DejaVu Sans,Arial,sans-serif;fill:#142338}.title{font-size:29px;font-weight:bold}.subtitle{font-size:15px;fill:#475569}.head{font-size:19px;font-weight:bold}.label{font-size:16px;font-weight:bold}.small{font-size:13px;fill:#475569}.line{fill:none;stroke:#475569;stroke-width:2.5;marker-end:url(#arrow);stroke-linejoin:round}.thrust{fill:none;stroke:#0891b2;stroke-width:3;marker-end:url(#cyan)}.feedback{fill:none;stroke:#059669;stroke-width:2.4;stroke-dasharray:7 5;marker-end:url(#green)}.card{fill:white;stroke:#aebfd1;stroke-width:1.5}</style>
+<rect width="1500" height="1820" fill="#f7f9fc"/>
+<text x="65" y="48" class="title">Drone control: position / velocity / altitude to motor thrust</text>
+<text x="65" y="76" class="subtitle">Navigation loops generate RPY and collective thrust; either Python or Betaflight handles stabilization and motor mixing.</text>
+<rect x="55" y="101" width="1390" height="531" rx="18" fill="#f0f5fb" stroke="#b4c6dc" stroke-width="2"/>
+<text x="80" y="135" class="head">1 · Guidance / outer control (Python) — optional</text>
+<rect x="88" y="165" width="294" height="72" rx="12" fill="#e9f1ff" stroke="#75a5f0" stroke-width="2"/>
+<text x="235" y="191" text-anchor="middle" class="label">Manual joystick / ADRC</text>
+<text x="235" y="212" text-anchor="middle" class="small">RPY setpoints + throttle</text>
+<rect x="88" y="285" width="294" height="75" rx="12" class="card"/>
+<text x="235" y="312" text-anchor="middle" class="label">Navigation setpoints</text>
+<text x="235" y="333" text-anchor="middle" class="small">XY position · altitude Z · yaw</text>
+<rect x="429" y="174" width="278" height="73" rx="10" class="card"/>
+<text x="568" y="201" text-anchor="middle" class="label">XY position controller</text>
+<text x="568" y="223" text-anchor="middle" class="small">Position error → XY velocity</text>
+<rect x="746" y="174" width="278" height="73" rx="10" class="card"/>
+<text x="885" y="201" text-anchor="middle" class="label">XY velocity controller</text>
+<text x="885" y="223" text-anchor="middle" class="small">Velocity error → roll / pitch</text>
+<rect x="429" y="293" width="278" height="73" rx="10" class="card"/>
+<text x="568" y="320" text-anchor="middle" class="label">Altitude (Z) controller</text>
+<text x="568" y="342" text-anchor="middle" class="small">Altitude error → vertical speed</text>
+<rect x="746" y="293" width="278" height="73" rx="10" class="card"/>
+<text x="885" y="320" text-anchor="middle" class="label">Vertical speed controller</text>
+<text x="885" y="342" text-anchor="middle" class="small">Vz error → collective thrust</text>
+<rect x="1100" y="232" width="285" height="88" rx="12" fill="#fff4e3" stroke="#dcae62" stroke-width="2"/>
+<text x="1242" y="261" text-anchor="middle" class="label">Navigation command bus</text>
+<text x="1242" y="284" text-anchor="middle" class="small">Roll / pitch · yaw</text>
+<text x="1242" y="303" text-anchor="middle" class="small">Throttle / collective thrust</text>
+<rect x="1065" y="439" width="320" height="64" rx="12" fill="#fff4d7" stroke="#dbac4d" stroke-width="2"/>
+<text x="1225" y="464" text-anchor="middle" class="label">Command source selector</text>
+<text x="1225" y="485" text-anchor="middle" class="small">Manual  /  navigation</text>
+<path class="line" d="M382 322 H402 V210 H429"/>
+<path class="line" d="M382 342 H413 V330 H429"/>
+<path class="line" d="M707 210 H746"/>
+<path class="line" d="M707 329 H746"/>
+<path class="line" d="M1024 210 H1051 V252 H1100"/>
+<path class="thrust" d="M1024 329 H1063 V301 H1100"/>
+<path class="line" d="M382 352 H400 V406 H1050 V287 H1100"/>
+<text x="682" y="399" text-anchor="middle" class="small">Yaw angle / yaw-rate request (depending on mode)</text>
+<path class="line" d="M1242 320 V439"/>
+<path class="line" d="M235 237 V417 H1100 V471 H1065"/>
+<path class="line" d="M1225 503 V622 H750 V646"/>
+<text x="1210" y="556" text-anchor="end" class="small">Output: RPY + throttle</text>
+<!-- feedback lanes connect to shared state feedback lower down -->
+<path class="feedback" d="M60 161 H31 V600 H415 V226 H429"/>
+<path class="feedback" d="M31 580 H403 V345 H429"/>
+<path class="feedback" d="M31 560 H722 V230 H746"/>
+<path class="feedback" d="M31 540 H733 V351 H746"/>
+<text x="73" y="593" class="small">Feedback: estimated position XY, altitude Z, velocity XY and vertical speed Vz (from simulated sensors / estimator)</text>
+<g transform="translate(0,650)">
+
+<text x="65" y="56" class="title">Selected flight controller → motor physics</text>
+<text x="65" y="84" class="subtitle">Selected commands: RPY pass through stabilization; throttle passes to mixer (with processing and limits)</text>
+<rect x="523" y="107" width="454" height="76" rx="13" fill="#e9f1ff" stroke="#75a5f0" stroke-width="2"/>
+<text x="750" y="136" text-anchor="middle" class="head">Command bus — manual or navigation</text><text x="750" y="162" text-anchor="middle" class="small">Roll / Pitch / Yaw + Throttle (or collective thrust)</text>
+<rect x="625" y="205" width="250" height="54" rx="12" class="card"/><text x="750" y="228" text-anchor="middle" class="label">Controller selector</text><text x="750" y="247" text-anchor="middle" class="small">Internal Python  /  Betaflight SITL</text>
+<path class="line" d="M750 183 V205"/>
+<rect x="80" y="291" width="630" height="421" rx="18" fill="#eef5ff" stroke="#9ab9e9" stroke-width="2"/>
+<rect x="790" y="291" width="630" height="421" rx="18" fill="#ecfdf5" stroke="#8bcbb1" stroke-width="2"/>
+<text x="102" y="321" class="head">A · Internal controller (Python)</text>
+<text x="812" y="321" class="head">B · Betaflight SITL</text>
+<path class="line" d="M625 232 H395 V342"/><path class="line" d="M875 232 H1105 V342"/>
+<!-- separate command distribution -->
+<rect x="115" y="342" width="560" height="48" rx="10" class="card"/>
+<text x="395" y="362" text-anchor="middle" class="label">Split control input</text><text x="395" y="380" text-anchor="middle" class="small">RPY / angular-rate commands versus collective thrust</text>
+<rect x="825" y="342" width="560" height="48" rx="10" class="card"/>
+<text x="1105" y="362" text-anchor="middle" class="label">SITL input / RC interface</text><text x="1105" y="380" text-anchor="middle" class="small">RPY RC channels + throttle RC channel</text>
+<!-- inner boxes -->
+<rect x="123" y="422" width="328" height="57" rx="10" class="card"/><text x="287" y="445" text-anchor="middle" class="label">Attitude P (Angle mode)</text><text x="287" y="465" text-anchor="middle" class="small">Angles → desired body rates</text>
+<rect x="123" y="500" width="328" height="58" rx="10" class="card"/><text x="287" y="524" text-anchor="middle" class="label">Rate PID / feedforward</text><text x="287" y="544" text-anchor="middle" class="small">Gyro feedback → RPY corrections</text>
+<rect x="145" y="601" width="500" height="65" rx="12" fill="#fff4e3" stroke="#dcae62" stroke-width="2"/><text x="395" y="627" text-anchor="middle" class="label">Motor mixer</text><text x="395" y="649" text-anchor="middle" class="small">Collective thrust + RPY corrections → M1–M4</text>
+<path class="line" d="M287 390 V422"/><path class="line" d="M287 479 V500"/><path class="line" d="M287 558 V583 H280 V601"/>
+<path class="thrust" d="M535 390 V601"/><text x="545" y="493" class="small" fill="#0891b2">THRUST</text><text x="545" y="511" class="small" fill="#0891b2">bypasses</text><text x="545" y="529" class="small" fill="#0891b2">PID</text>
+<!-- sitl internals -->
+<rect x="838" y="422" width="328" height="57" rx="10" class="card"/><text x="1002" y="445" text-anchor="middle" class="label">Attitude control (if active)</text><text x="1002" y="465" text-anchor="middle" class="small">Angles → target rates</text>
+<rect x="838" y="500" width="328" height="58" rx="10" class="card"/><text x="1002" y="524" text-anchor="middle" class="label">Rate PID / feedforward</text><text x="1002" y="544" text-anchor="middle" class="small">RPY control corrections</text>
+<rect x="855" y="601" width="500" height="65" rx="12" fill="#fff4e3" stroke="#dcae62" stroke-width="2"/><text x="1105" y="627" text-anchor="middle" class="label">Betaflight motor mixer</text><text x="1105" y="649" text-anchor="middle" class="small">Processed throttle + RPY corrections → M1–M4</text>
+<path class="line" d="M1002 390 V422"/><path class="line" d="M1002 479 V500"/><path class="line" d="M1002 558 V583 H990 V601"/>
+<path class="thrust" d="M1245 390 V601"/><text x="1256" y="490" class="small">THROTTLE</text><text x="1256" y="509" class="small">bypasses</text><text x="1256" y="528" class="small">attitude/rate PID</text>
+<text x="1105" y="690" text-anchor="middle" class="small">Output via SITL transport (e.g., UDP)</text>
+<!-- selection -->
+<path class="line" d="M395 666 V745 H685"/><path class="line" d="M1105 666 V745 H815"/>
+<rect x="685" y="721" width="130" height="48" rx="12" fill="#fff4d7" stroke="#dbac4d" stroke-width="2"/><text x="750" y="741" text-anchor="middle" class="label">SELECT</text><text x="750" y="758" text-anchor="middle" class="small">M1–M4</text>
+<!-- physics -->
+<rect x="143" y="803" width="1214" height="137" rx="17" fill="white" stroke="#d0b07a" stroke-width="2"/><text x="164" y="827" class="head">Shared physical drone (PyBullet)</text>
+<rect x="166" y="841" width="335" height="76" rx="11" fill="#fff7e9" stroke="#e4c58d"/><text x="333" y="871" text-anchor="middle" class="label">ESC + motor dynamics</text><text x="333" y="892" text-anchor="middle" class="small">Commands → RPM · lag / limits</text>
+<rect x="583" y="841" width="335" height="76" rx="11" fill="#fff7e9" stroke="#e4c58d"/><text x="750" y="871" text-anchor="middle" class="label">Propeller model</text><text x="750" y="892" text-anchor="middle" class="small">RPM → thrust + reaction torque</text>
+<rect x="1001" y="841" width="335" height="76" rx="11" fill="#fff7e9" stroke="#e4c58d"/><text x="1168" y="871" text-anchor="middle" class="label">PyBullet rigid-body step</text><text x="1168" y="892" text-anchor="middle" class="small">4 forces + yaw torque · stepSimulation()</text>
+<path class="line" d="M750 769 V784 H333 V841"/><path class="line" d="M501 880 H583"/><path class="line" d="M918 880 H1001"/>
+<!-- sensors -->
+<rect x="557" y="978" width="274" height="79" rx="11" fill="#e7f9f0" stroke="#8bcbb1"/><text x="694" y="1007" text-anchor="middle" class="label">IMU / state feedback</text><text x="694" y="1028" text-anchor="middle" class="small">Gyro / attitude → controllers</text><text x="694" y="1046" text-anchor="middle" class="small">FDM interface → SITL</text>
+<rect x="1058" y="978" width="274" height="79" rx="11" fill="#efedff" stroke="#b1a6e5"/><text x="1195" y="1007" text-anchor="middle" class="label">Godot camera renderer</text><text x="1195" y="1028" text-anchor="middle" class="small">Visual observations → ADRC</text>
+<path class="line" d="M1168 917 V960 H694 V978"/><path class="line" d="M1168 960 H1195 V978"/>
+<path class="feedback" d="M557 1018 H48 V529 H123"/>
+<path class="feedback" d="M557 1044 H28 V1090 H1465 V528 H1166"/>
+<path class="feedback" d="M1332 1018 H1450 V145 H977"/>
+<text x="79" y="1107" class="small">Mode: Angle commands → attitude P → rate PID; Acro commands → rate PID directly. Throttle path is separate, but Betaflight may process/limit it.</text>
+</g><path class="feedback" d="M557 1668 H16 V600 H31"/>
+<text x="75" y="1800" class="small">Note: XY controller uses a chosen frame (world/body); converting desired accelerations to tilt should account for yaw, gravity and thrust limits.</text>
+</svg>

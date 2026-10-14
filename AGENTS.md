@@ -36,4 +36,14 @@ Prefer simple composition and small contracts. Introduce abstractions only when 
 - Implement only the authorized milestone. Add advanced physics in later steps rather than expanding a basic entry-point change.
 - Validate behavior appropriate to the change, including lifecycle and cleanup when changing simulation execution.
 
+## Implementation plans and commit records
+
+- Before starting an authorized implementation, save the agreed plan as `plan/NNNN-short-name.md`. Use increasing four-digit numbers and descriptive filenames.
+- Each plan records its goal, implementation steps, interface changes, verification, scope/defaults, status, and implementation commit hash. Use `Pending` until an implementation commit exists; do not invent a hash.
+- Maintain [plan/README.md](plan/README.md) as the plan menu. Add a link, short description, status, and implementation commit hash for each plan.
+- Keep the saved plan aligned with agreed scope changes, and update its status and verification outcome when implementation is complete.
+- After committing an implementation, obtain the actual hash using Git and update it in both the plan and `plan/README.md`. Record additional implementation commits when a plan spans multiple commits.
+- Commit these post-commit metadata updates in a separate documentation commit when committing is requested. Record the implementation commit, not the metadata commit; do not amend a commit merely to insert its own hash.
+- Saving plans does not authorize implementation, committing, or pushing. In Plan mode, do not write files; persist the plan once execution mode is enabled.
+
 The [entry-point design](docs/design/simulation-entry-point.md) and [ideal rotor milestone](docs/design/rotor-forces-and-hover.md) describe implemented behavior. Later roadmap items do not themselves authorize implementation or dependency installation.
