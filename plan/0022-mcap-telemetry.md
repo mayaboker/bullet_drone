@@ -1,7 +1,7 @@
 # Optional MCAP physics telemetry adapter
 
 Status: Completed
-Implementation commit: Pending
+Implementation commit: `d347f7a1f4586e6fbc4f8750c7a2529a7ed94523`
 
 ## Goal and steps
 
@@ -41,5 +41,9 @@ when the extra is missing, then restored the extra. Built the library wheel.
 Paced 240 Hz Lab recordings had zero drops; final full readback verified all 6,952
 frames. Final benchmark p99 0.270 ms and deadline-miss increase 0.187 percentage
 points passed the agreed targets. Links, syntax, lock and whitespace checks passed.
-Local commit is now requested; implementation commit remains Pending until Git
-supplies its hash.
+Implementation committed at the user's request; see the commit record below.
+
+## Commit record
+
+Implementation committed as `d347f7a1f4586e6fbc4f8750c7a2529a7ed94523` at the user's request.
+The separate documentation commit records this implementation hash; no push.
