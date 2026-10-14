@@ -17,6 +17,9 @@ Use Python 3.12 and uv:
 uv sync --locked
 ```
 
+See [wheel packaging and usage from another project](docs/packaging-and-library-usage.md)
+for building, included files, installation and runnable library/CLI examples.
+
 ## Run
 
 GUI mode opens PyBullet's built-in viewer for a five-second simulation:
@@ -48,6 +51,23 @@ racer model driven by ideal instantaneous motors; no Gymnasium dependency is req
 propellers (+X) are orange and rear propellers are blue. The model is adapted
 from [gym-pybullet-drones](https://github.com/learnsyslab/gym-pybullet-drones/blob/01563120e060c9233a61f9cf00e6d4e5a8b331ab/gym_pybullet_drones/assets/racer.urdf);
 see the bundled [asset notes](src/bullet_drone/assets/racer/README.md) for provenance.
+
+## Main VS Code simulation tasks
+
+Open **Tasks: Run Task** in VS Code and select a task from this table.
+Godot tasks launch the viewer and simulation together; Godot 4.3+ must be on PATH.
+
+| Task name | Short description |
+| --- | --- |
+| **Run basic simulation** | PyBullet viewer: gravity-only simulation with the racer model. |
+| **Run hover simulation** | PyBullet viewer: take off to 3 m, hover for 20 s, then land and disarm. |
+| **Run position gate mission** | PyBullet viewer: pass the three gates, return to the starting pad, then land. |
+| **Run position control chain** | PyBullet viewer: fly a square with altitude/yaw changes and verify the full control chain. |
+| **Run Godot and drone** | Start Godot and one altitude-hover simulation. |
+| **Run Godot and 3 drones** | Start Godot and three hover simulations at staggered positions. |
+| **Run Godot and 3 position drones** | Start Godot and three gate-course flights, each returning to its own pad. |
+| **Run Godot and 6 position drones** | Start Godot and six gate-course flights, including the mirrored opposite-side pads. |
+| **Run Godot and position control chain** | Start Godot and one position/velocity PID control-chain verification flight. |
 
 ## Takeoff and altitude hover example
 
