@@ -1,4 +1,4 @@
-# Position PID and virtual-joystick control-chain example
+# Position PID and RC control-chain example
 
 Status: **Implemented and verified**
 
@@ -25,7 +25,7 @@ flowchart LR
     State[Ground-truth position and velocity] --> Position
     State --> Velocity
     Velocity -->|acceleration m/s²| Force[Gravity compensation and tilt-limited world force]
-    Force -->|Angle RPY radians and thrust N| Joy[Virtual joystick: SoftwareJoystick]
+    Force -->|18 integer RC channels| Joy[Virtual RC: SoftwareRc]
     Joy --> Source[HighLevelCommand and arm gate]
     Source --> Angle[Attitude P]
     Angle -->|target body rates rad/s| Rate[Rate PID]
@@ -37,9 +37,9 @@ flowchart LR
     Physics --> State
 ```
 
-The new example uses the existing `PositionController`, `AltitudeController`, shared `PID`, `SoftwareJoystick`, `FlightCommandProvider`, `InternalFlightController`, `MotorMixer`, ideal motor/propeller implementations and `SimulationRunner`. It never writes a pose or velocity to move the drone. Every movement results from joystick commands, stabilization, rotor allocation and applied forces.
+The new example uses the existing `PositionController`, `AltitudeController`, shared `PID`, `SoftwareRc`, `FlightCommandProvider`, `InternalFlightController`, `MotorMixer`, ideal motor/propeller implementations and `SimulationRunner`. It never writes a pose or velocity to move the drone. Every movement results from RC commands, stabilization, rotor allocation and applied forces.
 
-Position error produces desired velocity, which is compared with measured world velocity by the velocity PIDs. Their acceleration requests become world force, with gravity compensation and a 15° tilt bound. Converting force into Angle RPY for the requested yaw preserves world-direction control while heading changes. Collective thrust includes requested tilt compensation. The joystick uses SI Angle/thrust commands rather than normalized RC channels.
+Position error produces desired velocity, which is compared with measured world velocity by the velocity PIDs. Their acceleration requests become world force, with gravity compensation and a 15° tilt bound. Converting force using measured yaw preserves world-direction control while heading changes; wrapped heading error generates a bounded yaw-rate target. Collective thrust includes requested tilt compensation. The shared encoder converts roll/pitch angles, yaw rate and thrust to 18 integer AETR/AUX channels. See the [RC contract](rc-input.md).
 
 ## Flight and acceptance
 
@@ -60,24 +60,24 @@ The feedback is ideal ground truth. This example validates the current ideal con
 
 ## Read-only outputs and tracing
 
-`AltitudeController.last_output` is an immutable `AltitudeControlOutput` containing bounded velocity target, velocity-PID acceleration and vertical thrust. `PositionController.last_output` is immutable `PositionControlOutput`: world XYZ velocity target, raw velocity-PID acceleration before tilt clipping, and the resulting `JoystickInput`. Both are `None` before the first calculation and after reset. Invalid requests leave the previous output intact. The existing `thrust()` and `input()` APIs preserve their numerical outputs. Controllers do not configure diagnostics or persist telemetry.
+`AltitudeController.last_output` is an immutable `AltitudeControlOutput` containing bounded velocity target, velocity-PID acceleration and vertical thrust. `PositionController.last_output` is immutable `PositionControlOutput`: world XYZ velocity target, raw velocity-PID acceleration before tilt clipping, and the resulting `RcInput`. Both are `None` before the first calculation and after reset. Invalid requests leave the previous output intact. The existing `thrust()` and `input()` APIs retain the same control equations; integer RC encoding introduces bounded quantization. Controllers do not configure diagnostics or persist telemetry.
 
-Example-owned probes wrap the stabilization, motor and propeller contracts. Each delegates exactly once, records the returned values and preserves reset/stepping behavior. `ChainRecorder` is an observation consumer; it combines these values with the mission's joystick command and the provider's immutable allocation after each successful physics step.
+Example-owned probes wrap the stabilization, motor and propeller contracts. Each delegates exactly once, records the returned values and preserves reset/stepping behavior. `ChainRecorder` is an observation consumer; it combines these values with the mission's RC command and the provider's immutable allocation after each successful physics step.
 
 Each immutable `ChainSample` contains:
 
 - Completed physics state and preceding feedback state, with episode/step/time identity.
-- Active target position/yaw, position/velocity PID output and episode-scoped joystick command.
+- Active target position/yaw, position/velocity PID output and episode-scoped RC command.
 - Body-rate feedback, stabilization wrench, requested/achieved mixer allocation.
 - Target/actual rotor speeds and propeller forces/reaction torque.
 
 For completed step N, the command targets N and feedback belongs to N−1. Telemetry therefore distinguishes the feedback used to compute control from the resulting state. Disarmed samples have no PID/stabilization/allocation output, avoiding stale armed-stage data; actuator and propeller outputs show zero.
 
-Optional CSV records one row per completed step, with explicit SI-unit columns for these values. It is independent of Loguru phase/completion diagnostics. The output parent directory must exist. Write/open failures end the run with normal cleanup. `run_control_chain()` returns `ControlChainResult` with final observation, settled arrivals, samples and the verification report. The in-memory trace is intentionally retained for this short example; a long-run recorder should stream instead.
+CSV includes the 18 RC channels and decoded yaw rate. Optional CSV records one row per completed step, with explicit SI-unit columns for these values. It is independent of Loguru phase/completion diagnostics. The output parent directory must exist. Write/open failures end the run with normal cleanup. `run_control_chain()` returns `ControlChainResult` with final observation, settled arrivals, samples and the verification report. The in-memory trace is intentionally retained for this short example; a long-run recorder should stream instead.
 
 ## Automatic chain checks and verification
 
-After resources close, the example verifies all six settled targets, landing on the original pad, final disarm and zero rotor speeds. It checks command/feedback/physics identity at every step, joystick preservation of Angle/thrust, stabilization-to-mixer wrench, mixer-to-motor targets, ideal target/actual/physics speed equality, rotor limits and bounded horizontal velocity targets.
+After resources close, the example verifies all six settled targets, landing on the original pad, final disarm and zero rotor speeds. It checks command/feedback/physics identity at every step, RC preservation of Angle/thrust, stabilization-to-mixer wrench, mixer-to-motor targets, ideal target/actual/physics speed equality, rotor limits and bounded horizontal velocity targets.
 
 It independently sums body-frame rotor forces and lever-arm torque plus reaction torque, then compares the resulting wrench with the achieved mixer wrench. This validates the interfaces without applying a force twice. It also verifies that roll/pitch/yaw torque and both directions of X/Y motion were exercised. A broken link raises `ControlChainVerificationError` and returns failure instead of claiming success.
 

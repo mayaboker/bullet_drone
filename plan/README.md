@@ -26,5 +26,6 @@ Save agreed implementation plans here before implementation. This index records 
 | [0020: Drone Lab interface and cycle](0020-drone-lab-interface-cycle.md) | Current and proposed call sequences, package interfaces, loop ownership and independent Godot rendering. | Completed | Pending |
 | [0021: Joystick simulation interface](0021-joystick-simulation-interface.md) | Public joystick-only stepping boundary supporting the Drone Lab-owned control loop. | Completed | Pending |
 | [0022: MCAP telemetry](0022-mcap-telemetry.md) | Optional synchronized ground-truth/sensor recording through mcap_bug. | Completed | `d347f7a1f4586e6fbc4f8750c7a2529a7ed94523` |
+| [0023: RC input](0023-rc-input.md) | 18-channel AETR RC boundary and application migration. | Completed | Pending |
 
 These first two records were saved retrospectively from the agreed designs and completed work. The first commit is the initial project baseline, which also includes the racer URDF update. Future plans are saved before implementation, with `Pending` in the commit column, then updated with the actual implementation hash after committing. A subsequent documentation commit stores that metadata; its hash does not replace the implementation hash.

@@ -9,7 +9,7 @@ from bullet_drone.config import ConfigurationError
 from bullet_drone.contracts import LifecycleError
 from bullet_drone.controllers import AltitudeController, PidSettings, PositionController
 from bullet_drone.controllers.geometry import conjugate, from_rpy, multiply
-from bullet_drone.joystick import SoftwareJoystick
+from bullet_drone.rc import SoftwareRc
 from bullet_drone.models import DroneObservation, DroneState
 from examples.position.demo import PositionDemoTimeoutError, run_position_demo
 from examples.position.mission import GATE_X_M, PositionMission, PositionPhase
@@ -26,25 +26,27 @@ def observation(step=0,t=0,pos=(0,0,.015),vel=(0,0,0),episode='episode'):
 
 @pytest.mark.parametrize('target,yaw,axis', [((1,0,3),0,0),((0,1,3),0,1),((1,0,3),pi/2,0),((0,1,3),pi/2,1)])
 def test_world_force_directions_and_yaw_independence(target,yaw,axis):
-    value=controller().input(target,(0,0,3),(0,0,0),.01,yaw_rad=yaw)
-    q=from_rpy(value.rpy)
+    c=controller()
+    frame=c.input(target,(0,0,3),(0,0,0),.01,yaw_rad=yaw,measured_yaw_rad=yaw)
+    value=c.rc_codec.decode(frame,'test',1)
+    q=from_rpy((*value.rpy[:2],yaw))
     force=multiply(multiply(q,(0,0,value.thrust_n,0)),conjugate(q))[:3]
     assert force[axis]>0 and abs(force[1-axis])<1e-8
-    assert force[2]==pytest.approx(9.81)
+    assert force[2]==pytest.approx(9.81,abs=.02)
     assert value.armed and value.mode=='angle'
 
 
 def test_tilt_collective_bounds_and_pid_reset():
     c=controller(5)
-    value=c.input((100,100,3),(0,0,3),(-100,-100,0),.01)
-    assert acos(cos(value.rpy[0])*cos(value.rpy[1]))<=radians(5)+1e-12
+    value=c.rc_codec.decode(c.input((100,100,3),(0,0,3),(-100,-100,0),.01),'test',1)
+    assert acos(cos(value.rpy[0])*cos(value.rpy[1]))<=radians(5)+.002
     assert 9.81<value.thrust_n<=30
     c.input((0,0,3.1),(0,0,3),(0,0,0),.01)
     assert c.altitude.velocity.integral>0
     c.reset()
     assert c.altitude.velocity.integral==0
-    level=c.input((0,0,3),(0,0,3),(0,0,0),.01)
-    assert level.rpy==(0,0,0) and level.thrust_n==pytest.approx(9.81)
+    level=c.rc_codec.decode(c.input((0,0,3),(0,0,3),(0,0,0),.01),'test',1)
+    assert level.rpy==(0,0,0) and level.thrust_n==pytest.approx(9.81,abs=.02)
 
 
 @pytest.mark.parametrize('kwargs', [dict(target_position_m=(float('nan'),0,3)),dict(velocity_m_s=(0,float('inf'),0)),dict(dt_s=0),dict(yaw_rad=float('nan')),dict(descent_speed_limit_m_s=-1)])
@@ -56,24 +58,24 @@ def test_invalid_controller_inputs_do_not_advance_pid(kwargs):
     assert all(pid._previous_measurement is None for pid in (*c.position,*c.velocity,c.altitude.position,c.altitude.velocity))
 
 
-def test_mission_joystick_lifecycle_replay_and_reset():
-    joystick=Mock(wraps=SoftwareJoystick());m=PositionMission(controller(),joystick)
+def test_mission_rc_lifecycle_replay_and_reset():
+    rc=Mock(wraps=SoftwareRc());m=PositionMission(controller(),rc)
     with pytest.raises(LifecycleError):m.command(observation(),.01)
     m.reset(observation(pos=(1.5,.25,.015)))
     value=m.command(observation(t=.5,pos=(1.5,.25,.015)),.01)
     assert value.armed and m.phase==PositionPhase.TAKEOFF
-    joystick.set_input.assert_called_once();joystick.command.assert_called_once()
+    rc.set_input.assert_called_once();rc.command.assert_called_once()
     with pytest.raises(InvalidCommandError):m.command(observation(t=.5,pos=(1.5,.25,.015)),.01)
     m.reset(observation(pos=(3,.5,.015),episode='new'))
     assert m.home==(3,.5,.015) and len(m.transitions)==1
     assert m.waypoints[-1]==(3,.5,3)
     with pytest.raises(InvalidCommandError):m.command(observation(),.01)
-    m.close();m.close();joystick.close.assert_called_once()
+    m.close();m.close();rc.close.assert_called_once()
     with pytest.raises(LifecycleError):m.reset(observation())
 
 
 def test_arrival_dwell_requires_position_and_velocity_and_own_pad():
-    m=PositionMission(controller(),SoftwareJoystick());m.reset(observation())
+    m=PositionMission(controller(),SoftwareRc());m.reset(observation())
     def step(t,pos=(0,0,3),vel=(0,0,0)):
         return m.command(observation(m._next_step-1,t,pos,vel),.1)
     step(.5,pos=(0,0,.015));step(1);step(1.3,vel=(.2,0,0));step(1.6);step(2.1)
@@ -122,19 +124,19 @@ def test_complete_flights_cross_gates_both_directions_and_land_on_home(home,monk
 @pytest.mark.parametrize('failure', [None,RuntimeError('control failed'),KeyboardInterrupt()])
 def test_timeout_and_failure_cleanup(failure,monkeypatch):
     from examples.position import demo
-    physics_type=demo.PyBulletPhysics;joystick_type=demo.SoftwareJoystick
-    physics=[];joysticks=[]
+    physics_type=demo.PyBulletPhysics;rc_type=demo.SoftwareRc
+    physics=[];rcs=[]
     def create_physics(*args,**kwargs):
         value=physics_type(*args,**kwargs);physics.append(value);return value
-    def create_joystick():
-        value=joystick_type();joysticks.append(value);return value
-    monkeypatch.setattr(demo,'PyBulletPhysics',create_physics);monkeypatch.setattr(demo,'SoftwareJoystick',create_joystick)
+    def create_rc(*args, **kwargs):
+        value=rc_type(*args, **kwargs);rcs.append(value);return value
+    monkeypatch.setattr(demo,'PyBulletPhysics',create_physics);monkeypatch.setattr(demo,'SoftwareRc',create_rc)
     if failure:
         monkeypatch.setattr(demo.PositionController,'input',Mock(side_effect=failure))
         with pytest.raises(type(failure)):run_position_demo(gui=False,max_duration_s=2)
     else:
         with pytest.raises(PositionDemoTimeoutError):run_position_demo(gui=False,max_duration_s=.1)
-    assert physics[0]._client is None and joysticks[0]._closed
+    assert physics[0]._client is None and rcs[0]._closed
 
 
 @pytest.mark.parametrize('position',[(7,0,.015),(0,2,.015),(0,0,3),(0,0,float('nan'))])

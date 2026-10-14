@@ -1,12 +1,13 @@
-"""Setpoint sequence and joystick command source; no physics mutation."""
+"""Setpoint sequence and rc command source; no physics mutation."""
 from dataclasses import dataclass
 from math import dist, hypot, pi
 
 from loguru import logger
-from bullet_drone.commands import HighLevelCommand, InvalidCommandError, JoystickInput, _finite, _values
-from bullet_drone.contracts import JoystickInterface, LifecycleError
+from bullet_drone.commands import HighLevelCommand, InvalidCommandError, RcInput, _finite, _values
+from bullet_drone.contracts import RcInterface, LifecycleError
 from bullet_drone.controllers.geometry import attitude_error, from_rpy
 from bullet_drone.controllers.position import PositionController
+from bullet_drone.controllers.geometry import yaw_from_quaternion
 from bullet_drone.models import DroneObservation, Quaternion, Vector3
 
 
@@ -26,8 +27,8 @@ class Arrival:
 
 
 class ControlChainMission:
-    def __init__(self, controller: PositionController, joystick: JoystickInterface):
-        self.controller, self.joystick = controller, joystick
+    def __init__(self, controller: PositionController, rc: RcInterface):
+        self.controller, self.rc = controller, rc
         self._closed = False
         self._episode = None
         self._next_step = 0
@@ -62,7 +63,7 @@ class ControlChainMission:
         self.arrivals = []
         self.last_feedback = self.last_command = self.active_target = None
         self.controller.reset()
-        self.joystick.reset(observation)
+        self.rc.reset(observation)
         self._episode = state.episode_id
         self._next_step = state.step_index + 1
 
@@ -101,11 +102,12 @@ class ControlChainMission:
         self.active_target = Waypoint('land',(*self.home[:2],0),0) if self.phase == 'land' else self.waypoints[self.index]
         if self.phase in ('track','land'):
             value = self.controller.input(self.active_target.position_m,pos,vel,dt,yaw_rad=self.active_target.yaw_rad,
+                                          measured_yaw_rad=yaw_from_quaternion(state.orientation_xyzw),
                                           descent_speed_limit_m_s=.5 if self.phase=='land' else None)
         else:
-            value = JoystickInput()
-        self.joystick.set_input(value)
-        result = self.joystick.command(observation,dt)
+            value = RcInput()
+        self.rc.set_input(value)
+        result = self.rc.command(observation,dt)
         self.last_feedback, self.last_command = observation, result
         self._next_step += 1
         self._last_time = t
@@ -127,4 +129,4 @@ class ControlChainMission:
         if not self._closed:
             self._closed = True
             self._episode = None
-            self.joystick.close()
+            self.rc.close()

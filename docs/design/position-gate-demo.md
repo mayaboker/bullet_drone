@@ -34,7 +34,7 @@ Launches require X<6 m, |Y|<=1.3 m, and ground-level Z in [0,0.03] m, validated 
 
 ## Reusable position controller
 
-`PositionController(altitude, position_pid, velocity_pid, max_tilt_rad)` belongs in `bullet_drone.controllers`. Its `input(target_position_m, position_m, velocity_m_s, dt_s, yaw_rad=0, descent_speed_limit_m_s=None)` returns armed `JoystickInput` in Angle mode. It has no episode, mission, joystick, physics or rendering ownership. Its immutable `last_output` exposes desired XYZ velocity, raw acceleration and joystick input for the separate [control-chain verification example](position-control-chain.md); reset clears it. `reset()` clears all horizontal and altitude PID histories.
+`PositionController(altitude, position_pid, velocity_pid, max_tilt_rad)` belongs in `bullet_drone.controllers`. Its `input(target_position_m, position_m, velocity_m_s, dt_s, yaw_rad=0, measured_yaw_rad=0, descent_speed_limit_m_s=None)` returns armed `RcInput` in Angle mode. It has no episode, mission, RC, physics or rendering ownership. Its immutable `last_output` exposes desired XYZ velocity, raw acceleration and RC input for the separate [control-chain verification example](position-control-chain.md); reset clears it. `reset()` clears all horizontal and altitude PID histories.
 
 The XY cascade uses the common scalar PID independently per axis: position error produces velocity in m/s, velocity error produces acceleration in m/s². Horizontal velocity magnitude is bounded so diagonal travel stays within the configured speed. The reused altitude controller produces requested world vertical force including gravity compensation. Horizontal force is mass times acceleration, scaled to satisfy the tilt limit relative to vertical force. Convert the resulting world-force direction to body-to-world ZYX roll/pitch for the requested absolute yaw; thrust magnitude includes horizontal and vertical components, clipped to vehicle capacity. This compensates the requested tilt; attitude tracking has transient lag. There is no force or gravity applied by the controller itself.
 
@@ -42,9 +42,9 @@ The example uses XY position Kp=0.8 s⁻¹, velocity Kp=2 s⁻¹, speed limit 1 
 
 ## Composition and lifecycle
 
-`examples/position` owns its CLI, composition and `PositionMission`, which implements the existing `HighLevelController` contract. The mission translates each position-controller output through `JoystickInterface.set_input()` and `command()`. The existing command provider handles arm gating, stabilization and mixing. Physics, actuator, propeller and runner contracts remain unchanged; no library code imports examples.
+`examples/position` owns its CLI, composition and `PositionMission`, which implements the existing `HighLevelController` contract. The mission translates each position-controller output through `RcInterface.set_input()` and `command()`. The existing command provider handles arm gating, stabilization and mixing. Physics, actuator, propeller and runner contracts remain unchanged; no library code imports examples.
 
-The mission validates episode, next-step identity, positive dt and nondecreasing simulation time before advancing. Reset restores timers, waypoints and controller state for the new episode/home. Close is idempotent and closes its owned joystick. The runner closes provider, physics and optional rendering consumers on completion, initialization/stepping/control failure, timeout and KeyboardInterrupt.
+The mission validates episode, next-step identity, positive dt and nondecreasing simulation time before advancing. Reset restores timers, waypoints and controller state for the new episode/home. Close is idempotent and closes its owned RC. The runner closes provider, physics and optional rendering consumers on completion, initialization/stepping/control failure, timeout and KeyboardInterrupt.
 
 `run_position_demo()` returns immutable `PositionDemoResult`: final observation and transition records carrying phase, waypoint index, time and actual position. Phase transitions report diagnostics through Loguru; they are not a telemetry store.
 
@@ -52,7 +52,7 @@ The mission validates episode, next-step identity, positive dt and nondecreasing
 
 Each drone owns an independent physics world. Gates and other Godot scenery are decorative; no inter-drone or gate collision, obstacle avoidance, path planner, wind or sensor estimator is included. The example actively closes XY position error and returns each drone to its own pad. The hover example remains a separate altitude-only scenario.
 
-Tests verify world-force directions under different yaw headings, tilt/collective limits, PID reset and invalid-input rejection, joystick/episode lifecycle, interrupted arrival dwell, home alignment before landing, timeout/failure/interruption cleanup, and CLI/task behavior. Full real PyBullet trajectories for all six pads verify six gate-plane crossings per drone (outbound and return), inside opening clearances near 3 m, own-pad touchdown and zero final rotor speeds.
+Tests verify world-force directions under different yaw headings, tilt/collective limits, PID reset and invalid-input rejection, RC/episode lifecycle, interrupted arrival dwell, home alignment before landing, timeout/failure/interruption cleanup, and CLI/task behavior. Full real PyBullet trajectories for all six pads verify six gate-plane crossings per drone (outbound and return), inside opening clearances near 3 m, own-pad touchdown and zero final rotor speeds.
 
 Verified complete mission durations are approximately 68.179 s, 65.179 s and
 62.183 s from pads 1, 2 and 3 respectively. Each ended at Z≈0.01349 m with
@@ -60,3 +60,6 @@ XY landing error below 0.00001 m and all four rotor speeds zero. The complete
 Python suite passes 240 tests. Three actual wall-time-paced Godot publishers
 were run together on an isolated test port; all completed and the live course
 view was captured and visually inspected at `/tmp/bullet-drone-position-course.png`.
+
+The controller uses measured heading for force conversion and wrapped heading error
+for yaw-rate control, then encodes integer RC channels. See the [RC contract](rc-input.md).

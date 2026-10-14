@@ -1,15 +1,16 @@
-"""Timed takeoff/hover/landing mission, issuing commands through a joystick."""
+"""Timed takeoff/hover/landing mission, issuing commands through RC input."""
 
 from dataclasses import dataclass
 from enum import StrEnum
 
 from loguru import logger
 
-from bullet_drone.commands import HighLevelCommand, InvalidCommandError, JoystickInput, _finite
+from bullet_drone.commands import HighLevelCommand, InvalidCommandError, RcInput, _finite
 from bullet_drone.config import _number
-from bullet_drone.contracts import JoystickInterface, LifecycleError
+from bullet_drone.contracts import RcInterface, LifecycleError
 from bullet_drone.controllers.altitude import AltitudeController
 from bullet_drone.models import DroneObservation
+from bullet_drone.rc import RcCodec
 
 
 class MissionPhase(StrEnum):
@@ -53,10 +54,12 @@ class HoverMissionController:
     current flat ground and racer body, not a contact sensor or general terrain.
     """
 
-    def __init__(self, altitude: AltitudeController, joystick: JoystickInterface,
-                 settings: HoverMissionSettings = HoverMissionSettings()) -> None:
+    def __init__(self, altitude: AltitudeController, rc: RcInterface,
+                 settings: HoverMissionSettings = HoverMissionSettings(),
+                 rc_codec: RcCodec | None = None) -> None:
         self._altitude = altitude
-        self._joystick = joystick
+        self.rc_codec = rc_codec if rc_codec is not None else RcCodec(altitude.max_thrust_n)
+        self._rc = rc
         self.settings = settings
         self._closed = False
         self._episode_id: str | None = None
@@ -84,7 +87,7 @@ class HoverMissionController:
             raise LifecycleError("Cannot reset a closed hover mission")
         self._episode_id = None
         self._altitude.reset()
-        self._joystick.reset(observation)
+        self._rc.reset(observation)
         state = observation.ground_truth
         self._phase = MissionPhase.SETTLE
         self._phase_since_s = _finite(state.simulation_time_s, "simulation_time_s")
@@ -115,8 +118,8 @@ class HoverMissionController:
                 0.0 if landing else self.settings.target_altitude_m, z, vz, dt_s,
                 self.settings.descent_speed_limit_m_s if landing else None,
             )
-        self._joystick.set_input(JoystickInput("angle", (0.0, 0.0, 0.0), thrust, armed))
-        result = self._joystick.command(observation, dt_s)
+        self._rc.set_input(self.rc_codec.encode("angle", (0.0, 0.0, 0.0), thrust, armed))
+        result = self._rc.command(observation, dt_s)
         self._next_step += 1
         self._last_time_s = t
         return result
@@ -165,4 +168,4 @@ class HoverMissionController:
             return
         self._closed = True
         self._episode_id = None
-        self._joystick.close()
+        self._rc.close()

@@ -32,6 +32,7 @@ def csv_row(sample: ChainSample) -> dict:
                feedback_step_index=f.step_index, feedback_time_s=f.simulation_time_s,
                target_name=sample.target.name, target_yaw_rad=sample.target.yaw_rad,
                armed=command.armed, mode=command.mode, thrust_n=command.thrust_n,
+               yaw_rate_rad_s=command.yaw_rate_rad_s,
                requested_thrust_n=allocation.requested.thrust_n if allocation else None,
                achieved_thrust_n=allocation.achieved.thrust_n if allocation else None,
                saturated=allocation.saturated if allocation else False)
@@ -47,6 +48,8 @@ def csv_row(sample: ChainSample) -> dict:
     for name, values in vectors.items():
         for index, axis in enumerate('xyz'):
             row[f'{name}_{axis}'] = values[index] if values is not None else None
+    for index in range(18):
+        row[f'rc_channel_{index+1}'] = output.rc_input.channels[index] if output else None
     for index in range(4):
         row[f'orientation_xyzw_{index}'] = s.orientation_xyzw[index]
         row[f'motor_target_{index}_rad_s'] = sample.motor_targets_rad_s[index]

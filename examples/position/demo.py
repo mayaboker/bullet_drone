@@ -8,7 +8,7 @@ from bullet_drone.config import ConfigurationError, DroneSettings, SimulationCon
 from bullet_drone.controllers import AltitudeController, InternalControlSettings, PidSettings
 from bullet_drone.controllers.position import PositionController
 from bullet_drone.environment import DroneEnvironment
-from bullet_drone.joystick import SoftwareJoystick
+from bullet_drone.rc import RcCodec, SoftwareRc
 from bullet_drone.models import DroneObservation, Vector3
 from bullet_drone.physics import PyBulletPhysics
 from bullet_drone.rendering.composition import compose_rendering
@@ -41,10 +41,11 @@ def run_position_demo(*, gui: bool = True, max_duration_s: float = 180.,
     vehicle = load_racer_parameters()
     altitude = AltitudeController(1., 9.81, 4*vehicle.max_thrust_per_rotor_n,
                                   PidSettings(1.5,0,0,1,0), PidSettings(4,1,0,3,1))
-    controller = PositionController(altitude, PidSettings(.8,0,0,1,0),
-                                    PidSettings(2,0,0,1.5,0), radians(15))
-    mission = PositionMission(controller, SoftwareJoystick())
     settings = InternalControlSettings((4,4,4), (2,2,2), (PidSettings(.05,0,0,.1,0),)*3)
+    codec = RcCodec(altitude.max_thrust_n, settings.max_rates_rad_s, config.rc)
+    controller = PositionController(altitude, PidSettings(.8,0,0,1,0),
+                                    PidSettings(2,0,0,1.5,0), radians(15),codec)
+    mission = PositionMission(controller, SoftwareRc(codec))
     provider = create_flight_command_provider(config.control, mission, settings, vehicle, dt)
     final = SimulationRunner().run(DroneEnvironment(PyBulletPhysics(config, vehicle)), config.simulation.max_steps,
                                    pace_wall_time=pace, command_provider=provider, consumers=consumers,

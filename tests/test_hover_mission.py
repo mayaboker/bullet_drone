@@ -9,7 +9,7 @@ from bullet_drone.contracts import LifecycleError
 from bullet_drone.controllers import AltitudeController, PidSettings
 from examples.hover.hover_demo import HoverDemoTimeoutError, run_hover_demo
 from examples.hover.hover_mission import HoverMissionController, HoverMissionSettings, MissionPhase
-from bullet_drone.joystick import SoftwareJoystick
+from bullet_drone.rc import SoftwareRc
 from bullet_drone.models import DroneObservation, DroneState
 
 
@@ -18,9 +18,9 @@ def observation(step=0, t=0, height=0.015, speed=0, episode='episode'):
                                       (0, 0, speed), (0, 0, 0)))
 
 
-def mission(joystick=None):
+def mission(rc=None):
     altitude = AltitudeController(1, 9.81, 30, PidSettings(1.5, 0, 0, 1, 0), PidSettings(4, 1, 0, 3, 1))
-    return HoverMissionController(altitude, joystick if joystick is not None else SoftwareJoystick())
+    return HoverMissionController(altitude, rc if rc is not None else SoftwareRc())
 
 
 def test_mission_dwell_interruptions_timing_and_disarm():
@@ -60,16 +60,16 @@ def test_mission_dwell_interruptions_timing_and_disarm():
         m.reset(observation())
 
 
-def test_mission_uses_joystick_interface_and_reset_clears_episode():
-    joystick = Mock(wraps=SoftwareJoystick())
-    m = mission(joystick)
+def test_mission_uses_rc_interface_and_reset_clears_episode():
+    rc = Mock(wraps=SoftwareRc())
+    m = mission(rc)
     with pytest.raises(LifecycleError):
         m.command(observation(), 0.1)
     m.reset(observation())
     obs = observation(0, 0.5)
     command = m.command(obs, 0.1)
-    joystick.set_input.assert_called_once()
-    joystick.command.assert_called_once_with(obs, 0.1)
+    rc.set_input.assert_called_once()
+    rc.command.assert_called_once_with(obs, 0.1)
     assert command.armed and command.thrust_n > 9.81
     assert m.phase == MissionPhase.TAKEOFF
     m.reset(observation(0, 0, episode='new'))
@@ -85,24 +85,24 @@ def test_invalid_mission_settings(kwargs):
         HoverMissionSettings(**kwargs)
 
 
-def test_timeout_closes_physics_and_joystick(monkeypatch):
+def test_timeout_closes_physics_and_rc(monkeypatch):
     from examples.hover import hover_demo
     physics_type = hover_demo.PyBulletPhysics
-    joystick_type = hover_demo.SoftwareJoystick
-    physics, joysticks = [], []
+    rc_type = hover_demo.SoftwareRc
+    physics, rcs = [], []
     def make_physics(*args, **kwargs):
         value = physics_type(*args, **kwargs)
         physics.append(value)
         return value
-    def make_joystick():
-        value = joystick_type()
-        joysticks.append(value)
+    def make_rc(*args, **kwargs):
+        value = rc_type(*args, **kwargs)
+        rcs.append(value)
         return value
     monkeypatch.setattr(hover_demo, 'PyBulletPhysics', make_physics)
-    monkeypatch.setattr(hover_demo, 'SoftwareJoystick', make_joystick)
+    monkeypatch.setattr(hover_demo, 'SoftwareRc', make_rc)
     with pytest.raises(HoverDemoTimeoutError, match='settle'):
         run_hover_demo(gui=False, max_duration_s=0.1)
-    assert physics[0]._client is None and joysticks[0]._closed
+    assert physics[0]._client is None and rcs[0]._closed
 
 
 def test_complete_headless_mission_tracks_altitude_and_stops_motors(monkeypatch):
@@ -137,22 +137,22 @@ def test_complete_headless_mission_tracks_altitude_and_stops_motors(monkeypatch)
 
 
 @pytest.mark.parametrize('failure', [RuntimeError('altitude failed'), KeyboardInterrupt()])
-def test_controller_failure_closes_world_and_joystick(monkeypatch, failure):
+def test_controller_failure_closes_world_and_rc(monkeypatch, failure):
     from examples.hover import hover_demo
     physics_type = hover_demo.PyBulletPhysics
-    joystick_type = hover_demo.SoftwareJoystick
-    physics, joysticks = [], []
+    rc_type = hover_demo.SoftwareRc
+    physics, rcs = [], []
     def make_physics(*args, **kwargs):
         value = physics_type(*args, **kwargs)
         physics.append(value)
         return value
-    def make_joystick():
-        value = joystick_type()
-        joysticks.append(value)
+    def make_rc(*args, **kwargs):
+        value = rc_type(*args, **kwargs)
+        rcs.append(value)
         return value
     monkeypatch.setattr(hover_demo, 'PyBulletPhysics', make_physics)
-    monkeypatch.setattr(hover_demo, 'SoftwareJoystick', make_joystick)
+    monkeypatch.setattr(hover_demo, 'SoftwareRc', make_rc)
     monkeypatch.setattr(hover_demo.AltitudeController, 'thrust', Mock(side_effect=failure))
     with pytest.raises(type(failure)):
         run_hover_demo(gui=False)
-    assert physics[0]._client is None and joysticks[0]._closed
+    assert physics[0]._client is None and rcs[0]._closed

@@ -5,7 +5,7 @@ simulates a bundled racer drone URDF with gravity and ideal rotor forces. It pro
 validated YAML configuration, GUI/headless modes, and Loguru diagnostics.
 It provides an API for internal Angle/Acro
 stabilization with a shared PID implementation and caller-supplied high-level
-RPY/thrust control. A software-joystick altitude demo takes off to 3 m, hovers for 20 seconds,
+RPY/thrust control. A software RC altitude demo takes off to 3 m, hovers for 20 seconds,
 then lands and disarms. Motor lag, electrical dynamics, and sensor models
 are planned for later milestones.
 
@@ -82,7 +82,7 @@ The demo starts on the ground, takes off to 3 m, and holds altitude for 20
 simulated seconds after settling. It then lands, disarms, and finishes with
 motors off. GUI mode is paced; `--headless` needs no display. The altitude
 controller commands the existing internal stabilization through a software
-joystick interface. VS Code’s **Run hover simulation** task runs this example.
+RC interface. VS Code’s **Run hover simulation** task runs this example.
 See [the mission, tuning, and API](docs/design/altitude-hover-demo.md).
 
 ## Godot FPV viewer
@@ -124,7 +124,7 @@ uv run examples/position/main.py --renderer godot
 In VS Code, select **Run Godot and 3 position drones** to fly all three drones.
 Each takes off to 3 m, passes through the three gates, returns through them,
 and lands/disarms on its own starting pad. Each flight uses ground-truth XYZ
-position control through the software joystick. Use **Run Godot and 6 position
+position control through the software RC. Use **Run Godot and 6 position
 drones** to include drones 4–6 on mirrored opposite-side pads at `(0, -0.75)`,
 `(1.5, -1)`, and `(3, -1.25)` m. The original three positions stay unchanged;
 a 0.75 m gap separates the closest opposite pair. All six return to their own
@@ -132,7 +132,7 @@ pad and land/disarm. Scroll the FPV panel stack to see cameras 4–6.
 The existing hover example
 remains available. See [the route, controller and verification](docs/design/position-gate-demo.md).
 
-## Position PID and virtual-joystick chain check
+## Position PID and RC chain check
 
 ```bash
 uv run examples/position_control/main.py --headless
@@ -141,7 +141,7 @@ uv run examples/position_control/main.py --headless --trace /tmp/control-chain.c
 
 This separate example takes off, flies a 2 m square, changes altitude and yaw,
 returns home, lands and disarms. It runs position PID → velocity PID → virtual
-joystick → stabilization → mixer → motors/propellers → PyBullet, records every
+RC → stabilization → mixer → motors/propellers → PyBullet, records every
 completed-step link, and verifies the chain automatically. In VS Code, use
 **Check position control chain (headless)** or **Run Godot and position control chain**.
 See [the control flow, trace and checks](docs/design/position-control-chain.md).
@@ -168,7 +168,7 @@ uv run --locked pytest -q
 Tests cover configuration validation, lifecycle, free fall, ground contact,
 five-second hover, torque directions and magnitudes, allocation limits, stale
 commands, body-frame thrust, altitude takeoff/20 s hover/landing/disarm,
-software joystick and arm gating, and failure/interruption cleanup.
+software RC and arm gating, and failure/interruption cleanup.
 
 ## Design
 

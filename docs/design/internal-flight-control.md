@@ -28,7 +28,7 @@ flowchart LR
     Step -->|DroneObservation| Source
 ```
 
-The main CLI runs the reusable simulation; the altitude-controlled hover demonstration lives in `examples/hover`. The stabilization path is composed through the Python API. The subsequent [altitude demo](altitude-hover-demo.md) adds a software joystick and high-level takeoff/hover/landing mission through a separate example entry point. The [position example](position-gate-demo.md) adds a reusable XY cascade and gate-course mission through the same joystick/stabilization path. [Godot rendering](godot-rendering.md) is implemented; ADRC and Betaflight transport remain future work.
+The main CLI runs the reusable simulation; the altitude-controlled hover demonstration lives in `examples/hover`. The stabilization path is composed through the Python API. The subsequent [altitude demo](altitude-hover-demo.md) adds a software RC and high-level takeoff/hover/landing mission through a separate example entry point. The [position example](position-gate-demo.md) adds a reusable XY cascade and gate-course mission through the same joystick/stabilization path. [Godot rendering](godot-rendering.md) is implemented; ADRC and Betaflight transport remain future work.
 
 ## Selection and composition
 
@@ -90,3 +90,12 @@ The runner resets the environment, then the command provider. Provider reset cle
 The optional runner `stop_when(observation)` predicate can finish a run after a completed step; predicate failures follow the same cleanup path. The runner owns closing provider and environment, attempts both even after cleanup failure/interruption, and preserves the original run failure. Repeated provider close is harmless. All providers, including the legacy hover provider, now implement reset/command/close; caller-defined providers must add those lifecycle methods.
 
 Tests cover PID equations and anti-windup, selection rejection before acquisition, commands and feedback frames, quaternion wrapping/sign equivalence, Angle/Acro routing, thrust bypass/feedforward/limits, resets/replay, real PyBullet disturbance convergence on all three axes, ideal propeller equations, injected actual motor speeds, model failures/output rejection, and cleanup failures. Existing free-fall, hover, torque magnitude, and CLI checks remain applicable.
+
+## RC angle yaw-rate override
+
+`HighLevelCommand.yaw_rate_rad_s` is optional and valid only in angle mode. When
+present, stabilization uses measured heading for its roll/pitch attitude target
+and replaces the yaw target rate with this bounded body-Z demand. It does not hold
+an absolute heading. Acro still uses three body rates. Commands omitting the field
+retain the original absolute-heading behavior. The new [RC facade](rc-input.md)
+sets this field; mission heading tracking occurs outside internal stabilization.

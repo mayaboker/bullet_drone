@@ -4,9 +4,10 @@ from enum import StrEnum
 from math import dist, hypot
 
 from loguru import logger
-from bullet_drone.commands import HighLevelCommand, InvalidCommandError, JoystickInput, _finite, _values
-from bullet_drone.contracts import JoystickInterface, LifecycleError
+from bullet_drone.commands import HighLevelCommand, InvalidCommandError, RcInput, _finite, _values
+from bullet_drone.contracts import RcInterface, LifecycleError
 from bullet_drone.controllers.position import PositionController
+from bullet_drone.controllers.geometry import yaw_from_quaternion
 from bullet_drone.models import DroneObservation, Vector3
 
 # Matches the visual course in renderers/godot/flight_world.gd: 7 + index * 7.
@@ -38,8 +39,8 @@ class PositionMission:
     Arrival requires 12 cm XYZ error and <=.15 m/s for .5 continuous seconds.
     Touchdown additionally requires own-pad XY <=12 cm and <=.05 m/s.
     """
-    def __init__(self, controller: PositionController, joystick: JoystickInterface):
-        self.controller, self.joystick = controller, joystick
+    def __init__(self, controller: PositionController, rc: RcInterface):
+        self.controller, self.rc = controller, rc
         self._closed = False
         self._episode = None
         self._next_step = 0
@@ -67,7 +68,7 @@ class PositionMission:
         self.home = _values(state.position_m, 3, 'home_position_m')
         self._since = self._last_time = _finite(state.simulation_time_s, 'simulation_time_s')
         self.controller.reset()
-        self.joystick.reset(observation)
+        self.rc.reset(observation)
         x, y, _ = self.home
         self.waypoints = ((x,y,3.), *((gate+1,y,3.) for gate in GATE_X_M),
                           *((gate-1,y,3.) for gate in reversed(GATE_X_M)), (x,y,3.))
@@ -92,14 +93,15 @@ class PositionMission:
             raise InvalidCommandError('Positive dt and nondecreasing simulation time required')
         self._advance(t, position, velocity)
         if self.phase in (PositionPhase.SETTLE, PositionPhase.DISARMED, PositionPhase.COMPLETE):
-            value = JoystickInput()
+            value = RcInput()
         else:
             landing = self.phase == PositionPhase.LAND
             target = (*self.home[:2], 0.) if landing else self.waypoints[self.index]
             value = self.controller.input(target, position, velocity, dt,
+                                          measured_yaw_rad=yaw_from_quaternion(state.orientation_xyzw),
                                           descent_speed_limit_m_s=.5 if landing else None)
-        self.joystick.set_input(value)
-        result = self.joystick.command(observation, dt)
+        self.rc.set_input(value)
+        result = self.rc.command(observation, dt)
         self._next_step += 1
         self._last_time = t
         return result
@@ -141,4 +143,4 @@ class PositionMission:
         if not self._closed:
             self._closed = True
             self._episode = None
-            self.joystick.close()
+            self.rc.close()

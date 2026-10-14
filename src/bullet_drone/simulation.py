@@ -1,22 +1,22 @@
-"""One joystick request per physics step; the caller owns the execution loop."""
+"""One RC request per physics step; the caller owns the execution loop."""
 
-from bullet_drone.commands import HighLevelCommand, InvalidCommandError, JoystickInput, MotorAllocation
+from bullet_drone.commands import HighLevelCommand, InvalidCommandError, RcInput, MotorAllocation
 from bullet_drone.composition import FlightCommandProvider, validate_control_backend
 from bullet_drone.config import SimulationConfig
 from bullet_drone.contracts import LifecycleError, MotorDynamics, PropellerModel, StabilizationController
 from bullet_drone.controllers import IdealStateFeedback, InternalControlSettings, InternalFlightController
 from bullet_drone.environment import DroneEnvironment
-from bullet_drone.joystick import SoftwareJoystick
+from bullet_drone.rc import RcCodec, SoftwareRc
 from bullet_drone.mixer import MotorMixer
 from bullet_drone.models import DroneObservation
 from bullet_drone.physics import PyBulletPhysics
 from bullet_drone.vehicle import VehicleParameters, load_racer_parameters
 
 
-class JoystickSimulation:
-    """Own joystick translation, stabilization and physics, but no run loop.
+class RcSimulation:
+    """Own RC translation, stabilization and physics, but no run loop.
 
-    Inputs use Angle radians or Acro body rad/s and collective newtons. Outputs
+    Inputs contain 18 integer RC channels in 1000..2000. Outputs
     are immutable world-frame ground truth. Optional component injections are
     library contracts for models/probes, not alternative per-step command paths.
     Runtime failures require reset before another step; close is terminal.
@@ -30,9 +30,10 @@ class JoystickSimulation:
         validate_control_backend(config.control)
         vehicle = vehicle if vehicle is not None else load_racer_parameters()
         self._timestep_s = config.simulation.timestep_s
-        self._joystick = SoftwareJoystick()
+        self._rc = SoftwareRc(RcCodec(4 * vehicle.max_thrust_per_rotor_n,
+                                       control_settings.max_rates_rad_s, config.rc))
         self._provider = FlightCommandProvider(
-            self._joystick,
+            self._rc,
             stabilization if stabilization is not None else InternalFlightController(control_settings),
             IdealStateFeedback(), MotorMixer(vehicle), self._timestep_s,
         )
@@ -59,7 +60,7 @@ class JoystickSimulation:
 
     def reset(self) -> DroneObservation:
         if self._closed:
-            raise LifecycleError("Cannot reset a closed joystick simulation")
+            raise LifecycleError("Cannot reset a closed RC simulation")
         self._observation = None
         self._last_command = None
         observation = self._environment.reset()
@@ -67,27 +68,24 @@ class JoystickSimulation:
         self._observation = observation
         return observation
 
-    def step(self, command: JoystickInput) -> DroneObservation:
+    def step(self, command: RcInput) -> DroneObservation:
         if self._closed or self._observation is None:
-            raise LifecycleError("Joystick simulation must be reset before stepping")
-        if not isinstance(command, JoystickInput):
-            raise InvalidCommandError("Simulation requires a JoystickInput")
+            raise LifecycleError("RC simulation must be reset before stepping")
+        if not isinstance(command, RcInput):
+            raise InvalidCommandError("Simulation requires an RcInput")
         # Revalidate even if a frozen input has been deliberately tampered with.
-        value = JoystickInput(command.mode, command.rpy, command.thrust_n, command.armed)
+        value = RcInput(command.channels)
         feedback = self._observation
         self._last_command = None
         try:
-            self._joystick.set_input(value)
+            self._rc.set_input(value)
             rotor_command = self._provider.command(feedback)
             observation = self._environment.step(rotor_command)
         except BaseException:
             # Translation may have consumed the step; never retry it implicitly.
             self._observation = None
             raise
-        self._last_command = HighLevelCommand(
-            value.mode, value.rpy, value.thrust_n, rotor_command.episode_id,
-            rotor_command.step_index, value.armed,
-        )
+        self._last_command = self._rc.last_command
         self._observation = observation
         return observation
 

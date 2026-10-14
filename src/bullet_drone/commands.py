@@ -92,6 +92,7 @@ class HighLevelCommand:
     episode_id: str
     step_index: int
     armed: bool = True
+    yaw_rate_rad_s: float | None = None
 
     def __post_init__(self) -> None:
         if type(self.armed) is not bool:
@@ -100,6 +101,10 @@ class HighLevelCommand:
             raise InvalidCommandError("Control mode must be 'angle' or 'acro'")
         object.__setattr__(self, "rpy", _values(self.rpy, 3, "rpy"))
         object.__setattr__(self, "thrust_n", WrenchCommand(self.thrust_n).thrust_n)
+        if self.yaw_rate_rad_s is not None:
+            if self.mode != "angle":
+                raise InvalidCommandError("Yaw-rate override is only valid in angle mode")
+            object.__setattr__(self, "yaw_rate_rad_s", _finite(self.yaw_rate_rad_s, "yaw_rate_rad_s"))
         _identity(self.episode_id, self.step_index)
 
     def validate_for(self, episode_id: str, next_step: int) -> None:
@@ -108,15 +113,14 @@ class HighLevelCommand:
 
 
 @dataclass(frozen=True, slots=True)
-class JoystickInput:
-    """SI joystick input: Angle radians or Acro rad/s; collective N, arm gate."""
+class RcInput:
+    """18 PWM-style integer channels in AETR/AUX order; no device transport."""
 
-    mode: str = "angle"
-    rpy: Vector3 = (0.0, 0.0, 0.0)
-    thrust_n: float = 0.0
-    armed: bool = False
+    channels: tuple[int, ...] = (1500, 1500, 1000, 1500) + (1000,) * 14
 
     def __post_init__(self) -> None:
-        command = HighLevelCommand(self.mode, self.rpy, self.thrust_n, "validation", 1, self.armed)
-        object.__setattr__(self, "rpy", command.rpy)
-        object.__setattr__(self, "thrust_n", command.thrust_n)
+        if not isinstance(self.channels, (tuple, list)) or len(self.channels) != 18:
+            raise InvalidCommandError("RC input requires exactly 18 channels")
+        if any(type(v) is not int or not 1000 <= v <= 2000 for v in self.channels):
+            raise InvalidCommandError("RC channels must be integers in 1000..2000")
+        object.__setattr__(self, "channels", tuple(self.channels))

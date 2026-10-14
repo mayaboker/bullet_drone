@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from bullet_drone.commands import HighLevelCommand, InvalidCommandError, WrenchCommand, _finite, _values
 from bullet_drone.config import ConfigurationError, _vector
-from bullet_drone.controllers.geometry import attitude_error, from_rpy, normalize, world_to_body
+from bullet_drone.controllers.geometry import attitude_error, from_rpy, normalize, world_to_body, yaw_from_quaternion
 from bullet_drone.controllers.pid import PID, PidSettings, clamp
 from bullet_drone.models import ControlFeedback, DroneObservation, Vector3
 
@@ -79,8 +79,16 @@ class InternalFlightController:
         # Validate all feedback before mutating any PID history.
         normalize(feedback.orientation_xyzw)
         measurements = _values(feedback.body_rates_rad_s, 3, "body_rates_rad_s")
-        targets = (self.attitude.rates(command.rpy, feedback) if command.mode == "angle"
-                   else tuple(clamp(v, limit) for v, limit in zip(command.rpy, self.settings.max_rates_rad_s)))
+        if command.mode == "angle":
+            rpy = command.rpy
+            if command.yaw_rate_rad_s is not None:
+                # Tilt stabilization follows current heading; yaw is directly rate-controlled.
+                rpy = (*rpy[:2], yaw_from_quaternion(feedback.orientation_xyzw))
+            targets = self.attitude.rates(rpy, feedback)
+            if command.yaw_rate_rad_s is not None:
+                targets = (*targets[:2], clamp(command.yaw_rate_rad_s, self.settings.max_rates_rad_s[2]))
+        else:
+            targets = tuple(clamp(v, limit) for v, limit in zip(command.rpy, self.settings.max_rates_rad_s))
         if command.mode != self._mode:
             self.rate.reset()
             self._mode = command.mode

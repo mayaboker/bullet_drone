@@ -10,7 +10,7 @@ from bullet_drone.controllers import InternalControlSettings, PidSettings
 from bullet_drone.controllers.altitude import AltitudeController
 from bullet_drone.environment import DroneEnvironment
 from examples.hover.hover_mission import HoverMissionController, MissionTransition
-from bullet_drone.joystick import SoftwareJoystick
+from bullet_drone.rc import RcCodec, SoftwareRc
 from bullet_drone.models import DroneObservation
 from bullet_drone.physics import PyBulletPhysics
 from bullet_drone.runner import SimulationRunner
@@ -45,11 +45,12 @@ def run_hover_demo(*, gui: bool = True, max_duration_s: float = 45.0,
         PidSettings(1.5, 0.0, 0.0, 1.0, 0.0),
         PidSettings(4.0, 1.0, 0.0, 3.0, 1.0),
     )
-    mission = HoverMissionController(altitude, SoftwareJoystick())
     stabilization = InternalControlSettings(
         (4.0, 4.0, 4.0), (2.0, 2.0, 2.0),
         (PidSettings(0.05, 0.0, 0.0, 0.1, 0.0),) * 3,
     )
+    codec = RcCodec(altitude.max_thrust_n, stabilization.max_rates_rad_s, config.rc)
+    mission = HoverMissionController(altitude, SoftwareRc(codec), rc_codec=codec)
     provider = create_flight_command_provider(config.control, mission, stabilization, vehicle, dt)
     final = SimulationRunner().run(
         DroneEnvironment(PyBulletPhysics(config, vehicle)), config.simulation.max_steps,

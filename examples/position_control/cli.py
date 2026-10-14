@@ -31,7 +31,7 @@ class ControlChainCliParser:
                 help="Initial PyBullet world position in meters (default: 0 0 0.015).",
             ), click.Option(["--trace"], type=click.Path(dir_okay=False,path_type=Path),
                             help="Optional CSV file with completed-step control-chain telemetry.")] + rendering_options(),
-            help="Exercise position/velocity PID, virtual joystick, stabilization, mixer and physics.",
+            help="Exercise position/velocity PID, virtual rc, stabilization, mixer and physics.",
         )
 
     def parse(self, argv: Sequence[str] | None = None) -> ControlChainOptions | int:

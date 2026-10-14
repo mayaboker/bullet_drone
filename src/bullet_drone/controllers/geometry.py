@@ -49,3 +49,9 @@ def attitude_error(current: Quaternion, target: Quaternion) -> Vector3:
         return tuple(2*v for v in q[:3])
     factor = 2 * atan2(length, q[3]) / length
     return tuple(v * factor for v in q[:3])
+
+
+def yaw_from_quaternion(orientation: Quaternion) -> float:
+    """World ZYX heading in radians from a body-to-world quaternion."""
+    x, y, z, w = normalize(orientation)
+    return atan2(2 * (w*z + x*y), 1 - 2 * (y*y + z*z))

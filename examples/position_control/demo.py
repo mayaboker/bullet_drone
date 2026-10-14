@@ -8,7 +8,7 @@ from bullet_drone.composition import FlightCommandProvider
 from bullet_drone.config import ConfigurationError, DroneSettings, SimulationConfig, SimulationSettings, _number
 from bullet_drone.controllers import AltitudeController, IdealStateFeedback, InternalControlSettings, InternalFlightController, PidSettings, PositionController
 from bullet_drone.environment import DroneEnvironment
-from bullet_drone.joystick import SoftwareJoystick
+from bullet_drone.rc import RcCodec, SoftwareRc
 from bullet_drone.mixer import MotorMixer
 from bullet_drone.models import DroneObservation, Vector3
 from bullet_drone.physics import PyBulletPhysics
@@ -47,9 +47,10 @@ def run_control_chain(*, gui: bool = True, headless: bool = False, renderer: str
     vehicle = load_racer_parameters()
     altitude = AltitudeController(drone.mass_kg,9.81,4*vehicle.max_thrust_per_rotor_n,
                                   PidSettings(1.5,0,0,1,0),PidSettings(4,1,0,3,1))
-    position = PositionController(altitude,PidSettings(.8,0,0,1,0),PidSettings(2,0,0,1.5,0),radians(15))
-    mission = ControlChainMission(position,SoftwareJoystick())
     settings = InternalControlSettings((4,4,4),(2,2,2),(PidSettings(.05,0,0,.1,0),)*3)
+    codec = RcCodec(altitude.max_thrust_n, settings.max_rates_rad_s, config.rc)
+    position = PositionController(altitude,PidSettings(.8,0,0,1,0),PidSettings(2,0,0,1.5,0),radians(15),codec)
+    mission = ControlChainMission(position,SoftwareRc(codec))
     stabilization = StabilizationProbe(InternalFlightController(settings))
     provider = FlightCommandProvider(mission,stabilization,IdealStateFeedback(),MotorMixer(vehicle),dt)
     motors = MotorProbe(IdealMotorDynamics(vehicle.max_speed_rad_s))
@@ -62,5 +63,5 @@ def run_control_chain(*, gui: bool = True, headless: bool = False, renderer: str
     if not mission.completed:
         raise ControlChainTimeoutError(f'Control-chain example exceeded {duration:g} s (phase {mission.phase}, waypoint {mission.index})')
     arrivals, samples = tuple(mission.arrivals), tuple(recorder.samples)
-    verification = verify_chain(final,arrivals,samples,vehicle)
+    verification = verify_chain(final,arrivals,samples,vehicle,codec)
     return ControlChainResult(final,arrivals,samples,verification)

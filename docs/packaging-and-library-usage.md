@@ -46,7 +46,7 @@ For a new release, change `project.version` in `pyproject.toml`, synchronize the
 
 | Repository location | Installed contents |
 | --- | --- |
-| `src/bullet_drone/*.py` | Simulation, configuration, CLI, state, joystick, mixer, actuator, propeller and physics modules |
+| `src/bullet_drone/*.py` | Simulation, configuration, CLI, state, RC, mixer, actuator, propeller and physics modules |
 | `src/bullet_drone/controllers/` | Shared PID, altitude, position and internal stabilization controllers |
 | `src/bullet_drone/forces/` | Rotor thrust and reaction torque models |
 | `src/bullet_drone/rendering/` | Render contracts, configuration, snapshots and UDP publication |
@@ -177,7 +177,7 @@ To use the PyBullet GUI, set `gui: true` or pass `--renderer pybullet`. A workin
 The wheel provides the reusable controllers and command interfaces:
 
 ```python
-from bullet_drone.commands import HighLevelCommand, JoystickInput
+from bullet_drone.commands import HighLevelCommand, RcInput
 from bullet_drone.composition import create_flight_command_provider
 from bullet_drone.contracts import HighLevelController
 from bullet_drone.controllers import (
@@ -186,49 +186,49 @@ from bullet_drone.controllers import (
     PidSettings,
     PositionController,
 )
-from bullet_drone.joystick import SoftwareJoystick
+from bullet_drone.rc import SoftwareRc
 ```
 
-These imports are available in the new project. Define your own `HighLevelController` with `reset(observation)`, `command(observation, dt_s)` and `close()`. It can use `PositionController` for position/velocity PID and send its `JoystickInput` to `SoftwareJoystick`. Use `create_flight_command_provider()` with explicit stabilization settings and pass the resulting provider to `SimulationRunner.run(command_provider=...)`.
+These imports are available in the new project. Define your own `HighLevelController` with `reset(observation)`, `command(observation, dt_s)` and `close()`. It can use `PositionController` for position/velocity PID and send its `RcInput` to `SoftwareRc`. Use `create_flight_command_provider()` with explicit stabilization settings and pass the resulting provider to `SimulationRunner.run(command_provider=...)`.
 
-Angle RPY uses radians, desired velocity uses m/s, collective thrust uses newtons, and motor speeds use rad/s. Commands must match the observation's episode and next step. The command provider handles arm gating, stabilization and mixing; physics applies rotor forces and advances the world. Configure diagnostic logging in your application's entry point; keep telemetry recording separate.
+RC input contains 18 integers in 1000..2000 with AETR/AUX mapping. `RcCodec` translates between channels and internal angles/rates/thrust. Internal SI commands use radians, rad/s and newtons. See the [RC contract](design/rc-input.md). Commands must match the observation's episode and next step. The command provider handles arm gating, stabilization and mixing; physics applies rotor forces and advances the world. Configure diagnostic logging in your application's entry point; keep telemetry recording separate.
 
-See the [position/virtual-joystick control-chain guide](design/position-control-chain.md) and [internal control API](design/internal-flight-control.md) for the complete composition and lifecycle. The repository's `examples/position_control` contains a tested application composition, but importing `examples.position_control` is not supported by the installed wheel because examples are intentionally outside the packaged library. Port the application-specific mission into your own project if you want that behavior.
+See the [position/RC control-chain guide](design/position-control-chain.md) and [internal control API](design/internal-flight-control.md) for the complete composition and lifecycle. The repository's `examples/position_control` contains a tested application composition, but importing `examples.position_control` is not supported by the installed wheel because examples are intentionally outside the packaged library. Port the application-specific mission into your own project if you want that behavior.
 
-## Own the application loop with joystick-only commands
+## Own the application loop with RC-only commands
 
-`bullet_drone.simulation.JoystickSimulation` is the public boundary for an
+`bullet_drone.simulation.RcSimulation` is the public boundary for an
 application that owns its runner and high-level controllers. Construct it with
 `SimulationConfig`, `InternalControlSettings` and optional `VehicleParameters`.
-It owns the joystick, stabilization, mixer, actuator/propeller models and physics;
+It owns the RC, stabilization, mixer, actuator/propeller models and physics;
 it does not run a loop. Optional `stabilization`, `motor_dynamics` and
 `propeller_model` contracts support model injection and passive probes.
 
 ```python
-from bullet_drone.commands import JoystickInput
+from bullet_drone.commands import RcInput
 from bullet_drone.controllers import InternalControlSettings, PidSettings
-from bullet_drone.simulation import JoystickSimulation
+from bullet_drone.simulation import RcSimulation
 
 settings = InternalControlSettings(
     (4, 4, 4), (2, 2, 2), (PidSettings(.05, 0, 0, .1, 0),) * 3,
 )
-simulation = JoystickSimulation(config, settings)  # your SimulationConfig
+simulation = RcSimulation(config, settings)  # your SimulationConfig
 try:
     observation = simulation.reset()
     # A disarmed command advances one step with zero motor targets.
-    observation = simulation.step(JoystickInput())
+    observation = simulation.step(RcInput())
     print(observation.ground_truth.position_m)
 finally:
     simulation.close()
 ```
 
 Your application repeats controller calculations using observation N and submits
-one `JoystickInput` to receive observation N+1. It uses `simulation.timestep_s`
+one `RcInput` to receive observation N+1. It uses `simulation.timestep_s`
 for control updates and owns recording, pacing, completion and cleanup. The facade
-accepts joystick input only; rotor commands and wrenches cannot be submitted to
+accepts RC input only; rotor commands and wrenches cannot be submitted to
 its `step()` method. `last_command` and `allocation` are read-only completed-step
 diagnostics. Reset starts a new episode; runtime failure requires reset before
-reuse, and close is terminal. Invalid joystick input is rejected before stepping.
+reuse, and close is terminal. Invalid RC input is rejected before stepping.
 
 Drone Lab uses this interface with its own runner and separate position/velocity
 controllers. See [interface and cycle ownership](design/drone-lab-interface-and-cycle.md).
@@ -241,7 +241,7 @@ and `bullet_drone.telemetry.mcap` adapter. Install the `telemetry` extra and pas
 `--mcap PATH`, or register application topics on the shared recorder before
 startup. See [MCAP telemetry](design/mcap-telemetry.md) for the timestamped schemas,
 process lifecycle and nonblocking drop policy. This does not change the physics
-or joystick command interfaces.
+or RC command interfaces.
 
 The wheel includes the Python UDP render publisher and render interfaces. It does not install the Godot executable, viewer project, visual scene, render YAML or VS Code tasks. To use Godot, keep a separate copy of `renderers/godot`, run it with Godot 4.3+, and supply your own render profile or use the library's defaults. See the [rendering guide](design/godot-rendering.md).
 
