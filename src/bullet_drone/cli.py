@@ -14,18 +14,22 @@ class CliOptions:
     renderer: str | None = None
     render_config: Path | None = None
     headless: bool = False
+    mcap_path: Path | None = None
 
 
 class CliParser:
     def __init__(self) -> None:
         self._command = click.Command(
             "bullet-drone",
-            callback=lambda config, renderer, render_config, headless: CliOptions(config, renderer, render_config, headless),
+            callback=lambda config, renderer, render_config, headless, mcap: CliOptions(config, renderer, render_config, headless, mcap),
             params=[click.Option(
                 ["--config"], required=True,
                 type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True, path_type=Path),
                 help="Path to the simulation YAML configuration.",
-            ), click.Option(["--headless"], is_flag=True)] + rendering_options(),
+            ), click.Option(["--headless"], is_flag=True),
+                click.Option(["--mcap"], type=click.Path(dir_okay=False, path_type=Path),
+                             help="Optional MCAP file (requires the telemetry extra).")
+            ] + rendering_options(),
             help="Run a drone simulation in GUI or headless mode.",
         )
 

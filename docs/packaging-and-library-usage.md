@@ -236,6 +236,13 @@ The preceding lower-level APIs remain supported for existing consumers.
 
 ## Godot and other repository resources
 
+Optional MCAP recording is available through the independent `mcap-bug` package
+and `bullet_drone.telemetry.mcap` adapter. Install the `telemetry` extra and pass
+`--mcap PATH`, or register application topics on the shared recorder before
+startup. See [MCAP telemetry](design/mcap-telemetry.md) for the timestamped schemas,
+process lifecycle and nonblocking drop policy. This does not change the physics
+or joystick command interfaces.
+
 The wheel includes the Python UDP render publisher and render interfaces. It does not install the Godot executable, viewer project, visual scene, render YAML or VS Code tasks. To use Godot, keep a separate copy of `renderers/godot`, run it with Godot 4.3+, and supply your own render profile or use the library's defaults. See the [rendering guide](design/godot-rendering.md).
 
 The Python package can run headless physics without launching Godot. Building the wheel does not change which files are packaged, copy example missions into the library, or publish an artifact; those would be separate changes.

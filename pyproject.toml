@@ -18,6 +18,12 @@ build-backend = "uv_build"
 [project.scripts]
 bullet-drone = "bullet_drone.main:main"
 
+[project.optional-dependencies]
+telemetry = ["mcap-bug>=0.1.0"]
+
+[tool.uv.sources]
+mcap-bug = { path = "../mcap_bug", editable = true }
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]

@@ -9,6 +9,11 @@ Date: **2026-10-13**
 
 ## 1. Project goal
 
+The optional [MCAP telemetry milestone](mcap-telemetry.md) now implements
+best-effort recording through the independent mcap_bug package and physics/Lab
+adapters. Its explicit whole-frame drop policy prioritizes 240 Hz control;
+broader lossless-recording requirements below remain draft future work.
+
 Design a reusable Python package for simulating a quadcopter with PyBullet. The package should support headless experiments, visual observation, and recording and plotting simulation results. Project and dependency management will use uv when implementation begins.
 
 The central architectural goal is to separate physical evolution from visual observation. Physics owns the authoritative world and simulation clock. Rendering receives snapshots and constructs camera views without controlling or modifying physics. Logging and plotting consume telemetry through independent interfaces. A separate sensors package converts ground truth into noisy measurements; the environment groups ground truth and sensor readings in a `DroneObservation` as described in the [sensor design](sensors.md).

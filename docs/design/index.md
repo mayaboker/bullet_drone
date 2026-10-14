@@ -17,6 +17,7 @@ This folder contains the design for a Python package that simulates a quadcopter
 - [Position-controlled gate course](position-gate-demo.md): XYZ control through the joystick, gate traversal, return-to-home-pad landing, and three-/six-drone tasks.
 - [Independent Godot FPV rendering](godot-rendering.md): configurable pose sources, UDP snapshots, lifecycle, world camera and top-left multi-publisher FPV panels, frames and verification.
 - [Sensors and drone observations](sensors.md): IMU, barometer, rangefinder, noise models, and separation of ground truth from measurements.
+- [MCAP telemetry](mcap-telemetry.md): optional physics/sensor adapter for the independent mcap_bug worker, topic schemas and synchronized application extensions.
 - [Project guidance](../../AGENTS.md): SOLID rules, library choices, and development workflow.
 - [Domain glossary](../../CONTEXT.md): shared terminology used by the design.
 

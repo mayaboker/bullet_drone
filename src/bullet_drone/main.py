@@ -39,6 +39,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         config = replace(config, simulation=replace(config.simulation, gui=gui))
         vehicle = load_racer_parameters()
         environment = DroneEnvironment(PyBulletPhysics(config, vehicle))
+        if options.mcap_path is not None:
+            from bullet_drone.telemetry.mcap import McapObservationRecorder, create_mcap_recorder
+            recording = McapObservationRecorder(create_mcap_recorder(options.mcap_path))
+            recording.start()
+            consumers = (*consumers, recording)
         logger.info("Starting {} simulation", "GUI" if config.simulation.gui else "headless")
         observation = SimulationRunner().run(
             environment, config.simulation.max_steps, pace_wall_time=pace, consumers=consumers,
