@@ -195,6 +195,45 @@ Angle RPY uses radians, desired velocity uses m/s, collective thrust uses newton
 
 See the [position/virtual-joystick control-chain guide](design/position-control-chain.md) and [internal control API](design/internal-flight-control.md) for the complete composition and lifecycle. The repository's `examples/position_control` contains a tested application composition, but importing `examples.position_control` is not supported by the installed wheel because examples are intentionally outside the packaged library. Port the application-specific mission into your own project if you want that behavior.
 
+## Own the application loop with joystick-only commands
+
+`bullet_drone.simulation.JoystickSimulation` is the public boundary for an
+application that owns its runner and high-level controllers. Construct it with
+`SimulationConfig`, `InternalControlSettings` and optional `VehicleParameters`.
+It owns the joystick, stabilization, mixer, actuator/propeller models and physics;
+it does not run a loop. Optional `stabilization`, `motor_dynamics` and
+`propeller_model` contracts support model injection and passive probes.
+
+```python
+from bullet_drone.commands import JoystickInput
+from bullet_drone.controllers import InternalControlSettings, PidSettings
+from bullet_drone.simulation import JoystickSimulation
+
+settings = InternalControlSettings(
+    (4, 4, 4), (2, 2, 2), (PidSettings(.05, 0, 0, .1, 0),) * 3,
+)
+simulation = JoystickSimulation(config, settings)  # your SimulationConfig
+try:
+    observation = simulation.reset()
+    # A disarmed command advances one step with zero motor targets.
+    observation = simulation.step(JoystickInput())
+    print(observation.ground_truth.position_m)
+finally:
+    simulation.close()
+```
+
+Your application repeats controller calculations using observation N and submits
+one `JoystickInput` to receive observation N+1. It uses `simulation.timestep_s`
+for control updates and owns recording, pacing, completion and cleanup. The facade
+accepts joystick input only; rotor commands and wrenches cannot be submitted to
+its `step()` method. `last_command` and `allocation` are read-only completed-step
+diagnostics. Reset starts a new episode; runtime failure requires reset before
+reuse, and close is terminal. Invalid joystick input is rejected before stepping.
+
+Drone Lab uses this interface with its own runner and separate position/velocity
+controllers. See [interface and cycle ownership](design/drone-lab-interface-and-cycle.md).
+The preceding lower-level APIs remain supported for existing consumers.
+
 ## Godot and other repository resources
 
 The wheel includes the Python UDP render publisher and render interfaces. It does not install the Godot executable, viewer project, visual scene, render YAML or VS Code tasks. To use Godot, keep a separate copy of `renderers/godot`, run it with Godot 4.3+, and supply your own render profile or use the library's defaults. See the [rendering guide](design/godot-rendering.md).

@@ -12,6 +12,8 @@ This folder contains the design for a Python package that simulates a quadcopter
 - [Internal flight control](internal-flight-control.md): API-only Angle/Acro stabilization, common PID, high-level command contract, controller selector, and ideal motor/propeller boundaries.
 - [Altitude hover demo](altitude-hover-demo.md): software joystick, altitude cascade, takeoff to 3 m, 20 s hover, landing/disarm, and example entry point.
 - [Position PID and virtual-joystick chain](position-control-chain.md): a new XYZ/yaw flight example with desired-velocity PID, per-stage telemetry and automatic full-chain checks.
+- [Drone Lab control flow](drone-lab-control-flow.md): application-owned runner and position-to-velocity cascade, joystick-only simulation commands and read-only physics feedback.
+- [Drone Lab interface and cycle ownership](drone-lab-interface-and-cycle.md): previous and implemented call sequences, command/feedback interfaces, runner ownership and independent Godot rendering.
 - [Position-controlled gate course](position-gate-demo.md): XYZ control through the joystick, gate traversal, return-to-home-pad landing, and three-/six-drone tasks.
 - [Independent Godot FPV rendering](godot-rendering.md): configurable pose sources, UDP snapshots, lifecycle, world camera and top-left multi-publisher FPV panels, frames and verification.
 - [Sensors and drone observations](sensors.md): IMU, barometer, rangefinder, noise models, and separation of ground truth from measurements.

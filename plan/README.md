@@ -22,5 +22,8 @@ Save agreed implementation plans here before implementation. This index records 
 | [0016: README renderer task table](0016-readme-render-task-table.md) | Main VS Code simulation/render launchers with exact task names and short descriptions. | Completed | `00cb931dc1d681783c82b211a56220a88a3b6bda` |
 | [0017: Godot render FPS](0017-godot-render-fps.md) | Top-right render-frame-rate overlay with resize anchoring and camera input pass-through. | Completed | `6e8b39b7791eed487a9e6fcc0cc9e9e9addab9fb` |
 | [0018: Godot NVIDIA offload](0018-godot-nvidia-offload.md) | NVIDIA PRIME/GLX environment on the shared Godot viewer launch task. | Completed | `a892227962aa74e1c680481979471ae799060d43` |
+| [0019: Drone Lab control flow](0019-drone-lab-control-flow.md) | Application-owned runner and position/velocity cascade with a joystick-only simulation boundary and physics feedback. | Completed | Pending |
+| [0020: Drone Lab interface and cycle](0020-drone-lab-interface-cycle.md) | Current and proposed call sequences, package interfaces, loop ownership and independent Godot rendering. | Completed | Pending |
+| [0021: Joystick simulation interface](0021-joystick-simulation-interface.md) | Public joystick-only stepping boundary supporting the Drone Lab-owned control loop. | Completed | Pending |
 
 These first two records were saved retrospectively from the agreed designs and completed work. The first commit is the initial project baseline, which also includes the racer URDF update. Future plans are saved before implementation, with `Pending` in the commit column, then updated with the actual implementation hash after committing. A subsequent documentation commit stores that metadata; its hash does not replace the implementation hash.
