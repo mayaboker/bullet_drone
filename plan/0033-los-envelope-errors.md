@@ -1,6 +1,6 @@
 # LOS 35-degree azimuth envelope and clear mission errors
 
-Status: Implemented and verified; uncommitted. Implementation commit: Pending.
+Status: Complete; committed. Implementation commit: `f6e5e302242388f337fee28aff70690f316d43c6`.
 
 ## Goal and implementation
 - Raise the default LOS and Bullet profile max azimuth from 30 to 35 degrees
@@ -40,3 +40,13 @@ Affected library/app/shared/recorder tests and live profile acquisition smoke.
 - Reviewed wrapped debug error overlay: /tmp/bullet-los-rejection-overlay.png.
   Whitespace checks passed. No native source, dependency, core physics, port or
   focused LOS wire-schema changes. No commits/pushes; restart bullet_app to load.
+
+## Commit record
+
+User requested committing all projects.
+
+- los_tracking: `10b73e11fc49b983b0eed3c4568307703f91ef88`
+- bullet_app: `eaa45c948432e72a08e3a7af9904f74e6ffa661f`
+- bullet_drone: `f6e5e302242388f337fee28aff70690f316d43c6`
+
+LOS (89) and app (41) tests passed again before committing. No push requested or performed.
