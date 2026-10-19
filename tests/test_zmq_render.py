@@ -26,7 +26,8 @@ def test_simulation_scheduling_bounded_queue_and_episode_reset(tmp_path):
     assert output.sequence == 31
     assert output.dropped == 30
     assert output.queue.qsize() == 1
-    sequence, latest = output.queue.get_nowait()
+    sequence, latest, source = output.queue.get_nowait()
+    assert source is None
     assert sequence == 30 and latest.step_index == 240
     output.consume(SimpleNamespace(ground_truth=replace(state, episode_id='two')))
     assert output.queue.get_nowait()[1].episode_id == 'two'

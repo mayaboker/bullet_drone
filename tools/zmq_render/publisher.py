@@ -18,6 +18,8 @@ START_TIMEOUT_S = 15
 STOP_TIMEOUT_S = 5
 CONFIG_INTERVAL_S = 1
 SCHEDULE_TOLERANCE_S = 1e-12
+FLIGHT_FEEDBACK_HZ = 120
+WORKER_POLL_S = 0.002
 
 
 class RenderPublisher:
@@ -51,6 +53,7 @@ class RenderPublisher:
         self.snapshot_lock = Lock()
         self.latest_observation = None
         self.control_state = None
+        self.flight_config = self.feedback = self.latest_source = None
         self.sequence = 0
         self.dropped = 0
 
@@ -72,13 +75,21 @@ class RenderPublisher:
         with self.snapshot_lock:
             self.control_state = dict(state)
 
-    def consume(self, observation):
+    def set_flight(self, config, feedback):
+        from bullet_msgs.flight import validate_config, validate_feedback
+        validate_config(config)
+        validate_feedback(feedback)
+        with self.snapshot_lock:
+            self.flight_config, self.feedback = config, feedback
+
+    def consume(self, observation, *, source=None):
         if self.thread is None or self.stop.is_set():
             raise RuntimeError('publisher is not running')
         if self.error:
             return  # Failure is logged by the worker; physics keeps running.
         with self.snapshot_lock:
             self.latest_observation = observation
+            self.latest_source = source
         state = observation.ground_truth
         if state.episode_id != self.episode:
             self.episode = state.episode_id
@@ -86,7 +97,7 @@ class RenderPublisher:
         if state.simulation_time_s + SCHEDULE_TOLERANCE_S < self.next_capture:
             return
         self.next_capture = (int((state.simulation_time_s + SCHEDULE_TOLERANCE_S) * self.config['fps']) + 1) / self.config['fps']
-        item = (self.sequence, state)
+        item = (self.sequence, state, source)
         self.sequence += 1
         try:
             self.queue.put_nowait(item)
@@ -115,6 +126,7 @@ class RenderPublisher:
                           'camera': self.config['camera'], 'fps': self.config['fps']}
                 next_config = 0.0
                 next_state = 0.0
+                next_feedback = time.monotonic()
                 next_idle_pose = 0.0
                 wire_sequence = 0
                 previous_state = None
@@ -122,19 +134,32 @@ class RenderPublisher:
                 while not self.stop.is_set():
                     if time.monotonic() >= next_config:
                         socket.send_multipart([b'render/drone_1/config', json.dumps(config).encode()], flags=zmq.DONTWAIT)
+                        with self.snapshot_lock:
+                            platform = self.flight_config
+                        if platform is not None:
+                            from bullet_msgs.flight import CONFIG_TOPIC
+                            socket.send_multipart([CONFIG_TOPIC, json.dumps(platform).encode()], flags=zmq.DONTWAIT)
                         next_config = time.monotonic() + CONFIG_INTERVAL_S
                     from bullet_msgs.control import STATE_TOPIC
                     with self.snapshot_lock:
                         control_state = self.control_state
                         latest = self.latest_observation
+                        source = self.latest_source
+                        feedback = self.feedback
                     now = time.monotonic()
+                    if feedback is not None and now >= next_feedback:
+                        from bullet_msgs.flight import FEEDBACK_TOPIC
+                        socket.send_multipart([FEEDBACK_TOPIC, json.dumps(feedback).encode()], flags=zmq.DONTWAIT)
+                        next_feedback += 1 / FLIGHT_FEEDBACK_HZ
+                        if next_feedback < now:
+                            next_feedback = now + 1 / FLIGHT_FEEDBACK_HZ
                     changed = control_state != previous_state
                     if control_state is not None and (changed or now >= next_state):
                         socket.send_multipart([STATE_TOPIC, json.dumps(control_state).encode()], flags=zmq.DONTWAIT)
                         next_state = now + CONFIG_INTERVAL_S
                         previous_state = control_state
                     try:
-                        _, state = self.queue.get(timeout=0.05)
+                        _, state, source = self.queue.get(timeout=WORKER_POLL_S)
                     except Empty:
                         if control_state is None or control_state['state'] == 'running' or latest is None or (not changed and now < next_idle_pose):
                             continue
@@ -148,6 +173,8 @@ class RenderPublisher:
                                  if name in ('drone_id', 'episode_id', 'step_index',
                                              'simulation_time_s', 'position_m', 'orientation_xyzw',
                                              'linear_velocity_m_s')}}
+                    if source is not None:
+                        packet.update(schema_version=3, source=source)
                     socket.send_multipart([b'render/drone_1/pose', json.dumps(packet, allow_nan=False).encode()], flags=zmq.DONTWAIT)
         except Exception as exc:
             self.error = f'ZeroMQ render publisher failed: {exc}'
