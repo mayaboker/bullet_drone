@@ -1,0 +1,164 @@
+"""Physics capture scheduling; bounded worker owns serialization and ZeroMQ I/O."""
+from dataclasses import asdict
+import json
+from pathlib import Path
+from queue import Empty, Full, Queue
+from threading import Event, Thread, Lock
+from uuid import uuid4
+
+from loguru import logger
+from bullet_drone.config import ConfigurationError
+from bullet_drone.rendering.config import CameraSettings, number
+
+
+POSE_SCHEMA_VERSION = 2
+TELEMETRY_HWM = 64
+QUEUE_CAPACITY = 1
+START_TIMEOUT_S = 15
+STOP_TIMEOUT_S = 5
+CONFIG_INTERVAL_S = 1
+SCHEDULE_TOLERANCE_S = 1e-12
+
+
+class RenderPublisher:
+    def __init__(self, path):
+        path = Path(path).resolve()
+        try:
+            config = json.loads(path.read_text())
+            if set(config) != {'transport_config', 'camera', 'fps'}:
+                raise ValueError('expected transport_config, camera and fps')
+            camera = config['camera']
+            if set(camera) != {'width_px', 'height_px', 'fov_x_deg'}:
+                raise ValueError('expected camera width_px, height_px and fov_x_deg')
+            CameraSettings(camera['width_px'], camera['height_px'], camera['fov_x_deg'])
+            number(config['fps'], 'fps', 0)
+            if config['fps'] > 240:
+                raise ValueError('fps must not exceed the 240 Hz example physics rate')
+            if camera['width_px'] * camera['height_px'] * 3 > 64 * 1024 * 1024:
+                raise ValueError('image exceeds recorder 64 MiB limit')
+            self.transport_path = path.parent / config['transport_config']
+        except (OSError, ValueError, TypeError, KeyError) as exc:
+            raise ConfigurationError(f'Invalid render configuration: {exc}') from exc
+        self.config = config
+        self.stream = str(uuid4())
+        self.queue = Queue(QUEUE_CAPACITY)
+        self.stop = Event()
+        self.ready = Event()
+        self.error = None
+        self.thread = None
+        self.episode = None
+        self.next_capture = 0.0
+        self.snapshot_lock = Lock()
+        self.latest_observation = None
+        self.control_state = None
+        self.sequence = 0
+        self.dropped = 0
+
+    def start(self):
+        if self.thread is not None:
+            raise RuntimeError('publisher already started')
+        self.thread = Thread(target=self._run, name='zmq-render', daemon=True)
+        self.thread.start()
+        if not self.ready.wait(START_TIMEOUT_S):
+            self.close()
+            raise RuntimeError('ZeroMQ publisher startup timed out')
+        if self.error:
+            self.close()
+            raise RuntimeError(self.error)
+
+    def set_state(self, state):
+        from bullet_msgs.control import validate_state
+        validate_state(state)
+        with self.snapshot_lock:
+            self.control_state = dict(state)
+
+    def consume(self, observation):
+        if self.thread is None or self.stop.is_set():
+            raise RuntimeError('publisher is not running')
+        if self.error:
+            return  # Failure is logged by the worker; physics keeps running.
+        with self.snapshot_lock:
+            self.latest_observation = observation
+        state = observation.ground_truth
+        if state.episode_id != self.episode:
+            self.episode = state.episode_id
+            self.next_capture = 0.0
+        if state.simulation_time_s + SCHEDULE_TOLERANCE_S < self.next_capture:
+            return
+        self.next_capture = (int((state.simulation_time_s + SCHEDULE_TOLERANCE_S) * self.config['fps']) + 1) / self.config['fps']
+        item = (self.sequence, state)
+        self.sequence += 1
+        try:
+            self.queue.put_nowait(item)
+        except Full:
+            try:
+                self.queue.get_nowait()
+                self.dropped += 1
+            except Empty:
+                pass
+            try:
+                self.queue.put_nowait(item)
+            except Full:
+                self.dropped += 1
+
+    def _run(self):
+        import time
+        try:
+            import zmq
+            from bullet_msgs import load_transport
+            transport = load_transport(self.transport_path)
+            with zmq.Context() as context, context.socket(zmq.PUB) as socket:
+                socket.setsockopt(zmq.LINGER, 0)
+                socket.setsockopt(zmq.SNDHWM, TELEMETRY_HWM)
+                socket.bind(transport['telemetry_endpoint'])
+                config = {'schema_version': 1, 'stream_id': self.stream,
+                          'camera': self.config['camera'], 'fps': self.config['fps']}
+                next_config = 0.0
+                next_state = 0.0
+                next_idle_pose = 0.0
+                wire_sequence = 0
+                previous_state = None
+                self.ready.set()
+                while not self.stop.is_set():
+                    if time.monotonic() >= next_config:
+                        socket.send_multipart([b'render/drone_1/config', json.dumps(config).encode()], flags=zmq.DONTWAIT)
+                        next_config = time.monotonic() + CONFIG_INTERVAL_S
+                    from bullet_msgs.control import STATE_TOPIC
+                    with self.snapshot_lock:
+                        control_state = self.control_state
+                        latest = self.latest_observation
+                    now = time.monotonic()
+                    changed = control_state != previous_state
+                    if control_state is not None and (changed or now >= next_state):
+                        socket.send_multipart([STATE_TOPIC, json.dumps(control_state).encode()], flags=zmq.DONTWAIT)
+                        next_state = now + CONFIG_INTERVAL_S
+                        previous_state = control_state
+                    try:
+                        _, state = self.queue.get(timeout=0.05)
+                    except Empty:
+                        if control_state is None or control_state['state'] == 'running' or latest is None or (not changed and now < next_idle_pose):
+                            continue
+                        state = latest.ground_truth
+                        next_idle_pose = now + CONFIG_INTERVAL_S
+                    sequence = wire_sequence
+                    wire_sequence += 1
+                    packet = {'schema_version': POSE_SCHEMA_VERSION, 'stream_id': self.stream,
+                              'sequence': sequence, 'publisher_drops': self.dropped,
+                              **{name: value for name, value in asdict(state).items()
+                                 if name in ('drone_id', 'episode_id', 'step_index',
+                                             'simulation_time_s', 'position_m', 'orientation_xyzw',
+                                             'linear_velocity_m_s')}}
+                    socket.send_multipart([b'render/drone_1/pose', json.dumps(packet, allow_nan=False).encode()], flags=zmq.DONTWAIT)
+        except Exception as exc:
+            self.error = f'ZeroMQ render publisher failed: {exc}'
+            logger.error(self.error)
+        finally:
+            self.ready.set()
+
+    def close(self):
+        self.stop.set()
+        if self.thread is not None:
+            self.thread.join(STOP_TIMEOUT_S)
+            if self.thread.is_alive():
+                logger.error('ZeroMQ render worker did not stop before timeout')
+        logger.info('Render publisher: scheduled={}, queue_drops={}', self.sequence, self.dropped)
