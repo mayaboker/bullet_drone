@@ -1,4 +1,5 @@
 """Godot lifecycle with app-owned expiring RC, ideal attitude and noisy barometer."""
+from dataclasses import replace
 import sys
 import time
 from pathlib import Path
@@ -13,6 +14,7 @@ from bullet_drone.vehicle import load_racer_parameters
 from examples.position_square.demo import FLIGHT_CONTROL_SETTINGS
 from tools.zmq_render import DEFAULT_RENDER_CONFIG
 from tools.zmq_render.control import SimulationControl
+from tools.zmq_render.spawn import SpawnSelection
 from tools.zmq_render.scenario import ScenarioTermination
 from tools.zmq_render.flight import FlightLease, FlightReceiver
 from tools.zmq_render.publisher import RenderPublisher
@@ -38,6 +40,14 @@ class CliParser:
         return command.main(args=argv, prog_name='external-rc', standalone_mode=False)
 
 
+def _close_spawn_simulation(simulation):
+    """A cleanup failure must not discard the retained or newly initialized world."""
+    try:
+        simulation.close()
+    except Exception:
+        logger.exception('Could not close retired spawn simulation')
+
+
 def run(path, *, simulation_factory=RcSimulation):
     renderer = RenderPublisher(path)
     control = receiver = simulation = None
@@ -45,7 +55,7 @@ def run(path, *, simulation_factory=RcSimulation):
         renderer.start()
         transport = load_transport(renderer.transport_path)
         scenario = ScenarioTermination()
-        control = SimulationControl(renderer.transport_path, renderer, scenario=scenario)
+        control = SimulationControl(renderer.transport_path, renderer, scenario=scenario, spawn=SpawnSelection(INITIAL_POSITION_M))
         lease = FlightLease(control.physics_id)
         receiver = FlightReceiver(transport['flight_command_endpoint'], lease)
         vehicle = load_racer_parameters()
@@ -73,7 +83,7 @@ def run(path, *, simulation_factory=RcSimulation):
                               measurement_us=time.monotonic_ns() // NANOSECONDS_PER_MICROSECOND)
                 scenario.observe(source)
             reading = observation.sensors.barometer
-            feedback = dict(schema_version=1, source=source, barometer_altitude_m=None if reading is None else reading.altitude_m,
+            feedback = dict(schema_version=2, source=source, takeoff_height_m=control.spawn.takeoff_height_m, barometer_altitude_m=None if reading is None else reading.altitude_m,
                             orientation_xyzw=list(state.orientation_xyzw), armed=armed, mode=mode,
                             last_applied_sequence=applied_sequence, owner_id=lease.owner,
                             state=control.state, reason=control.reason)
@@ -87,7 +97,30 @@ def run(path, *, simulation_factory=RcSimulation):
         while True:
             receiver.poll(observation.ground_truth.episode_id)
             action = control.poll()
-            if action == 'reset' or (action == 'start' and control.state != 'running'):
+            if action == 'spawn':
+                candidate = None
+                try:
+                    request = control.spawn.pending
+                    candidate_config = replace(config, drone=replace(config.drone, initial_position_m=tuple(request['position_m'])))
+                    candidate = simulation_factory(candidate_config, FLIGHT_CONTROL_SETTINGS, vehicle)
+                    candidate_observation = candidate.reset()
+                except Exception:
+                    logger.exception('Spawn initialization failed; retaining previous simulation')
+                    if candidate is not None:
+                        _close_spawn_simulation(candidate)
+                    control.spawn.finish(False, 'initialization_failed')
+                else:
+                    previous = simulation
+                    simulation, config, observation = candidate, candidate_config, candidate_observation
+                    _close_spawn_simulation(previous)
+                    lease.end()
+                    scenario.reset()
+                    applied_sequence, armed, mode = 0, False, 'angle'
+                    control.spawn.finish(True, 'spawn_applied')
+                    control.transition('stopped', 'spawn_applied', observation)
+                    publish(captured=True)
+                control.publish(observation, force=True)
+            elif action == 'reset' or (action == 'start' and control.state != 'running'):
                 can_start = action == 'start' and lease.ready()
                 if action == 'start' and not can_start:
                     if scenario.result is None:

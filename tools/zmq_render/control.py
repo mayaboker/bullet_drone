@@ -14,9 +14,11 @@ MAX_POLL_MESSAGES = 16
 
 
 class SimulationControl:
-    def __init__(self, transport_path, publisher, *, clock=time.monotonic, scenario=None):
+    def __init__(self, transport_path, publisher, *, clock=time.monotonic, scenario=None, spawn=None):
         self.clock = clock
         self.scenario = scenario
+        self.spawn = spawn
+        self.episode_id = None
         self.publisher = publisher
         self.physics_id = uuid4().hex
         self.controller_id = None
@@ -35,6 +37,9 @@ class SimulationControl:
             self.socket.setsockopt(zmq.MAXMSGSIZE, MAX_CONTROL_BYTES)
             for topic in (COMMAND_TOPIC, HEARTBEAT_TOPIC):
                 self.socket.setsockopt(zmq.SUBSCRIBE, topic)
+            if spawn is not None:
+                from bullet_msgs.spawn import REQUEST_TOPIC
+                self.socket.setsockopt(zmq.SUBSCRIBE, REQUEST_TOPIC)
             if scenario is not None:
                 self.socket.setsockopt(zmq.SUBSCRIBE, COLLISION_TOPIC)
             self.socket.connect(profile['control_endpoint'])
@@ -48,6 +53,9 @@ class SimulationControl:
 
     def publish(self, observation, *, force=False):
         now = self.clock()
+        self.episode_id = observation.ground_truth.episode_id
+        if self.spawn is not None:
+            self.publisher.set_spawn(self.spawn.packet(self, observation))
         if force or now - self.last_state >= STATE_INTERVAL_S:
             state = observation.ground_truth
             packet = dict(schema_version=2 if self.scenario is not None else 1, physics_id=self.physics_id,
@@ -68,6 +76,15 @@ class SimulationControl:
                 parts = self.socket.recv_multipart(flags=zmq.NOBLOCK)
             except zmq.Again:
                 break
+            if self.spawn is not None:
+                from bullet_msgs.spawn import REQUEST_TOPIC
+                if len(parts) == 2 and parts[0] == REQUEST_TOPIC:
+                    try:
+                        if self.spawn.accept(decode_json(parts[1]), self):
+                            return 'spawn'
+                    except (ValueError, TypeError, UnicodeError, RecursionError):
+                        pass
+                    continue
             if len(parts) == 2 and parts[0] == COLLISION_TOPIC and self.scenario is not None:
                 try:
                     report = validate_collision(decode_json(parts[1]))
