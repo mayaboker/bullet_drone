@@ -1,6 +1,6 @@
 # Select and save drone starting positions in Godot
 
-Status: Implemented and verified; uncommitted. Implementation commit: Pending.
+Status: Complete; committed. Implementation commit: `1163fc93b80b7753cfc7528eeb4ff77718f75dab`.
 
 ## Goal and defaults
 Click any ground point in the complete 500 x 500 m landscape for Bullet X/Y,
@@ -61,3 +61,7 @@ existing flight/collision regressions and MCAP readback. Record outcomes here.
 
 Follow-up: [0032](0032-scenario-takeoff-height.md) replaces manual-only ground
 selection Z and fixed 20 m climb with automatic terrain Z and scenario takeoff height.
+
+## Commit record
+
+User requested committing all projects after verification. Implementation commit: `1163fc93b80b7753cfc7528eeb4ff77718f75dab`. No push requested or performed.

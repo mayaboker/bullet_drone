@@ -30,5 +30,5 @@
 | [0028: app flight channel](0028-app-flight-channel.md) | App-controlled 20 m takeoff, settled hover and LOS approach with expiring RC channel. | Complete; committed | `fac9ee367cf79f7a4a11fbd88f12c925467022cf` |
 | [0029: renderer collision completion](0029-render-collision-end.md) | Truck contact, authoritative scenario completion, app latch and terminal MCAP drain. | Complete; committed | `aecc8312cea2cea622fd08b893b51d9be794ffbb` |
 | [0030: LOS telemetry in degrees](0030-los-telemetry-degrees.md) | Focused 30Hz bearing/rate/TTC/confidence/state stream from app to MCAP. | Complete; committed | `610c92bb54fcfc39df37af0b532515e2b2354da6` |
-| [0031: spawn scenarios](0031-spawn-scenarios.md) | Landscape picking, world altitude, saved presets and confirmed stopped spawn configuration. | Implemented; verified, uncommitted | Pending |
-| [0032: scenario takeoff height](0032-scenario-takeoff-height.md) | Configurable relative climb with preset persistence and automatic terrain-based starting Z. | Implemented; verified, uncommitted | Pending |
+| [0031: spawn scenarios](0031-spawn-scenarios.md) | Landscape picking, world altitude, saved presets and confirmed stopped spawn configuration. | Complete; committed | `1163fc93b80b7753cfc7528eeb4ff77718f75dab` |
+| [0032: scenario takeoff height](0032-scenario-takeoff-height.md) | Configurable relative climb with preset persistence and automatic terrain-based starting Z. | Complete; committed | `1163fc93b80b7753cfc7528eeb4ff77718f75dab` |

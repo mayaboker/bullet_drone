@@ -1,6 +1,6 @@
 # Scenario takeoff height and terrain-based World Z
 
-Status: Implemented and verified; uncommitted. Implementation commit: Pending.
+Status: Complete; committed. Implementation commit: `1163fc93b80b7753cfc7528eeb4ff77718f75dab`.
 
 ## Goal and implementation
 - Add Takeoff height (m) to the renderer scenario dialog: relative climb above
@@ -43,3 +43,7 @@ Start/Reset and MCAP readback verify a nondefault height; capture screenshot.
   0.015 m. Production source pose/configuration retains its exact supplied value.
 - Updated README/contracts/design docs. No dependency changes, core/LOS changes,
   commits or pushes. Restart renderer, physics and app to load this revision.
+
+## Commit record
+
+User requested committing all projects after verification. Implementation commit: `1163fc93b80b7753cfc7528eeb4ff77718f75dab`. No push requested or performed.
