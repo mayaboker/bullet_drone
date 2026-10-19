@@ -28,4 +28,4 @@
 | [0026: pose ground-truth velocity](0026-pose-ground-truth-velocity.md) | Publish world linear velocity in pose v2 with shared/native validation and MCAP readback. | Complete; committed | `51e37e60078dc27a0996f3830acf80721b739a2b` |
 | [0027: shared workspace environment](0027-shared-workspace-environment.md) | One Python 3.12 uv environment, lockfile and build/run configuration across six sibling projects. | Implemented; verified with Godot 4.7 | `b147bb5b4949bba649d178e8c144f15bf845421e` |
 | [0028: app flight channel](0028-app-flight-channel.md) | App-controlled 20 m takeoff, settled hover and LOS approach with expiring RC channel. | Complete; committed | `fac9ee367cf79f7a4a11fbd88f12c925467022cf` |
-| [0029: renderer collision completion](0029-render-collision-end.md) | Truck contact, authoritative scenario completion, app latch and terminal MCAP drain. | Implemented; verified, uncommitted | Pending |
+| [0029: renderer collision completion](0029-render-collision-end.md) | Truck contact, authoritative scenario completion, app latch and terminal MCAP drain. | Complete; committed | `aecc8312cea2cea622fd08b893b51d9be794ffbb` |
