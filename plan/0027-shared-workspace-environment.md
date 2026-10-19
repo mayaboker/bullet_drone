@@ -38,4 +38,4 @@ system tool installation, commits, or pushes. Missing external viewer tasks are 
 Implemented; shared Python environment, native renderer tests and real-display scene checks verified with Godot 4.7.
 
 ## Implementation commit
-Pending.
+`b147bb5b4949bba649d178e8c144f15bf845421e` (`proj init`).

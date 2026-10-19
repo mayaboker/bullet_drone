@@ -26,4 +26,4 @@
 | [0024: Godot simulation controls](0024-godot-simulation-controls.md) | PUB/SUB Start/Stop/Reset, stopped startup and authoritative UI state. | Complete; committed | `2ec58b5318df28a2de180e0574358b4ae39cf2fd` |
 | [0025: PlotJuggler altitude window](0025-plotjuggler-altitude-window.md) | Save 0–5 m altitude bounds and a 360-second opening window/buffer; document live auto-fit. | Complete; committed | `20652a1a2f3bfbdc321f3d29340e8ed1612e7bd9` |
 | [0026: pose ground-truth velocity](0026-pose-ground-truth-velocity.md) | Publish world linear velocity in pose v2 with shared/native validation and MCAP readback. | Complete; committed | `51e37e60078dc27a0996f3830acf80721b739a2b` |
-| [0027: shared workspace environment](0027-shared-workspace-environment.md) | One Python 3.12 uv environment, lockfile and build/run configuration across six sibling projects. | Implemented; verified with Godot 4.7 | Pending |
+| [0027: shared workspace environment](0027-shared-workspace-environment.md) | One Python 3.12 uv environment, lockfile and build/run configuration across six sibling projects. | Implemented; verified with Godot 4.7 | `b147bb5b4949bba649d178e8c144f15bf845421e` |
