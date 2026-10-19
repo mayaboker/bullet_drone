@@ -13,6 +13,7 @@ from bullet_drone.vehicle import load_racer_parameters
 from examples.position_square.demo import FLIGHT_CONTROL_SETTINGS
 from tools.zmq_render import DEFAULT_RENDER_CONFIG
 from tools.zmq_render.control import SimulationControl
+from tools.zmq_render.scenario import ScenarioTermination
 from tools.zmq_render.flight import FlightLease, FlightReceiver
 from tools.zmq_render.publisher import RenderPublisher
 
@@ -37,19 +38,20 @@ class CliParser:
         return command.main(args=argv, prog_name='external-rc', standalone_mode=False)
 
 
-def run(path):
+def run(path, *, simulation_factory=RcSimulation):
     renderer = RenderPublisher(path)
     control = receiver = simulation = None
     try:
         renderer.start()
         transport = load_transport(renderer.transport_path)
-        control = SimulationControl(renderer.transport_path, renderer)
+        scenario = ScenarioTermination()
+        control = SimulationControl(renderer.transport_path, renderer, scenario=scenario)
         lease = FlightLease(control.physics_id)
         receiver = FlightReceiver(transport['flight_command_endpoint'], lease)
         vehicle = load_racer_parameters()
         config = SimulationConfig(SimulationSettings(1 / PHYSICS_HZ, MAX_EPISODE_STEPS, (0., 0., -GRAVITY_M_S2), gui=False),
                                   DroneSettings(MASS_KG, INITIAL_POSITION_M))
-        simulation = RcSimulation(config, FLIGHT_CONTROL_SETTINGS, vehicle)
+        simulation = simulation_factory(config, FLIGHT_CONTROL_SETTINGS, vehicle)
         platform = dict(schema_version=1, physics_id=control.physics_id, stream_id=renderer.stream,
                         mass_kg=MASS_KG, gravity_m_s2=GRAVITY_M_S2,
                         max_thrust_n=len(vehicle.rotor_positions_m) * vehicle.max_thrust_per_rotor_n,
@@ -69,6 +71,7 @@ def run(path):
                 source = dict(physics_id=control.physics_id, episode_id=state.episode_id, stream_id=renderer.stream,
                               step_index=state.step_index, simulation_time_s=state.simulation_time_s,
                               measurement_us=time.monotonic_ns() // NANOSECONDS_PER_MICROSECOND)
+                scenario.observe(source)
             reading = observation.sensors.barometer
             feedback = dict(schema_version=1, source=source, barometer_altitude_m=None if reading is None else reading.altitude_m,
                             orientation_xyzw=list(state.orientation_xyzw), armed=armed, mode=mode,
@@ -87,10 +90,14 @@ def run(path):
             if action == 'reset' or (action == 'start' and control.state != 'running'):
                 can_start = action == 'start' and lease.ready()
                 if action == 'start' and not can_start:
-                    control.transition('stopped', 'app_not_ready', observation)
+                    if scenario.result is None:
+                        control.transition('stopped', 'app_not_ready', observation)
+                    else:
+                        control.publish(observation, force=True)
                 else:
                     owner_packet = lease.candidate
                     lease.end()
+                    scenario.reset()
                     observation = simulation.reset()
                     applied_sequence, armed, mode = 0, False, 'angle'
                     if can_start:
@@ -100,6 +107,10 @@ def run(path):
                     start_time = time.monotonic()
                     first_deadline = start_time + FIRST_COMMAND_TIMEOUT_S
                     publish(captured=True)
+            elif action == 'collision':
+                lease.end()
+                control.transition('stopped', 'target_hit', observation)
+                publish()
             elif action in ('stop', 'controller_timeout', 'controller_changed') and control.state == 'running':
                 control.transition('stopped', action, observation)
                 lease.end()

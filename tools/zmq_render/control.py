@@ -5,6 +5,7 @@ from uuid import uuid4
 import zmq
 from loguru import logger
 from bullet_msgs import load_transport
+from bullet_msgs.scenario import COLLISION_TOPIC, validate_collision
 from bullet_msgs.control import (COMMAND_TOPIC, HEARTBEAT_TOPIC, HEARTBEAT_TIMEOUT_S,
     COMMAND_MAX_AGE_S, STATE_INTERVAL_S, MAX_CONTROL_BYTES, decode_json, validate_command)
 
@@ -13,8 +14,9 @@ MAX_POLL_MESSAGES = 16
 
 
 class SimulationControl:
-    def __init__(self, transport_path, publisher, *, clock=time.monotonic):
+    def __init__(self, transport_path, publisher, *, clock=time.monotonic, scenario=None):
         self.clock = clock
+        self.scenario = scenario
         self.publisher = publisher
         self.physics_id = uuid4().hex
         self.controller_id = None
@@ -33,6 +35,8 @@ class SimulationControl:
             self.socket.setsockopt(zmq.MAXMSGSIZE, MAX_CONTROL_BYTES)
             for topic in (COMMAND_TOPIC, HEARTBEAT_TOPIC):
                 self.socket.setsockopt(zmq.SUBSCRIBE, topic)
+            if scenario is not None:
+                self.socket.setsockopt(zmq.SUBSCRIBE, COLLISION_TOPIC)
             self.socket.connect(profile['control_endpoint'])
         except BaseException:
             self.close()
@@ -46,9 +50,12 @@ class SimulationControl:
         now = self.clock()
         if force or now - self.last_state >= STATE_INTERVAL_S:
             state = observation.ground_truth
-            self.publisher.set_state(dict(schema_version=1, physics_id=self.physics_id,
+            packet = dict(schema_version=2 if self.scenario is not None else 1, physics_id=self.physics_id,
                 controller_id=self.controller_id, episode_id=state.episode_id, state=self.state,
-                reason=self.reason, simulation_time_s=state.simulation_time_s))
+                reason=self.reason, simulation_time_s=state.simulation_time_s)
+            if self.scenario is not None:
+                packet['terminal_result'] = self.scenario.result
+            self.publisher.set_state(packet)
             self.last_state = now
 
     def poll(self):
@@ -61,6 +68,16 @@ class SimulationControl:
                 parts = self.socket.recv_multipart(flags=zmq.NOBLOCK)
             except zmq.Again:
                 break
+            if len(parts) == 2 and parts[0] == COLLISION_TOPIC and self.scenario is not None:
+                try:
+                    report = validate_collision(decode_json(parts[1]))
+                    live = self.last_heartbeat is not None and now - self.last_heartbeat <= HEARTBEAT_TIMEOUT_S
+                    if self.scenario.accept(report, controller_id=self.controller_id,
+                                            running=self.state == 'running', controller_live=live):
+                        return 'collision'
+                except (ValueError, TypeError, UnicodeError, RecursionError):
+                    pass
+                continue
             if len(parts) != 2 or parts[0] not in (COMMAND_TOPIC, HEARTBEAT_TOPIC):
                 continue
             try:

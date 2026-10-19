@@ -20,6 +20,7 @@ CONFIG_INTERVAL_S = 1
 SCHEDULE_TOLERANCE_S = 1e-12
 FLIGHT_FEEDBACK_HZ = 120
 WORKER_POLL_S = 0.002
+TERMINAL_INTERVAL_S = 0.1
 
 
 class RenderPublisher:
@@ -126,6 +127,7 @@ class RenderPublisher:
                           'camera': self.config['camera'], 'fps': self.config['fps']}
                 next_config = 0.0
                 next_state = 0.0
+                next_end = 0.0
                 next_feedback = time.monotonic()
                 next_idle_pose = 0.0
                 wire_sequence = 0
@@ -153,6 +155,11 @@ class RenderPublisher:
                         next_feedback += 1 / FLIGHT_FEEDBACK_HZ
                         if next_feedback < now:
                             next_feedback = now + 1 / FLIGHT_FEEDBACK_HZ
+                    terminal = None if control_state is None else control_state.get('terminal_result')
+                    if terminal is not None and now >= next_end:
+                        from bullet_msgs.scenario import END_TOPIC
+                        socket.send_multipart([END_TOPIC, json.dumps(terminal).encode()], flags=zmq.DONTWAIT)
+                        next_end = now + TERMINAL_INTERVAL_S
                     changed = control_state != previous_state
                     if control_state is not None and (changed or now >= next_state):
                         socket.send_multipart([STATE_TOPIC, json.dumps(control_state).encode()], flags=zmq.DONTWAIT)
