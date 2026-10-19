@@ -1,13 +1,14 @@
 # Focused LOS telemetry in degrees
 
-Status: implemented and verified; uncommitted. Implementation commit: Pending.
+Status: implemented, verified and committed. Implementation commit: `610c92bb54fcfc39df37af0b532515e2b2354da6`.
 
 ## Goal and scope
 bullet_app publishes tracking/front/los on existing port5558 and MCAP records it.
 Include only bearing(deg), LOS rate(deg/s), TTC(seconds), confidence(validity,
 qualification reason, dimensionless relative residual), timestamps and state.
 Keep LOS/control internals and existing radian mission diagnostics unchanged.
-No new port/thread/dependency, commits or pushes.
+No new port/thread/dependency. Commits were subsequently authorized by the user;
+pushing remains outside scope.
 
 ## Implementation
 - Shared version1 LosTelemetry contract/schema/topic; strict finite/null validation.
@@ -42,9 +43,18 @@ Completed with dependencies and library/controller behavior unchanged:
 Reports: `/tmp/bullet-los-flight/report.json`,
 `/tmp/bullet-los-collision/report.json`. Build log:
 `/tmp/bullet-los-python-build.log`. Integration bags were read back then removed;
-normal recordings still use bullet_render/recordings. No commits or pushes.
+normal recordings still use bullet_render/recordings. Committed on user request;
+no pushes performed.
 
 No native source changed, so native rebuild/frame-only checks and unchanged
 standalone drone/LOS suites were not repeated for this logging-only change.
 The real integrations exercised production physics, renderer, app and recorder;
 collision integration retains the previously documented deterministic trajectory.
+
+## Implementation commits
+
+- bullet_msgs: `09cfc485bb8cf9884744e3afc4e5ac32dbe49f28`
+- bullet_app: `7c6613f1288b780b6b8b199a5ef58ea54c3a4d1f`
+- bullet_drone: `610c92bb54fcfc39df37af0b532515e2b2354da6`
+- bullet_render: `6e2c1b6c932ac4429633513b30ef31222e83c567`
+- los_tracking and mcap_bagger: unchanged; no new commits needed.

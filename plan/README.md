@@ -29,4 +29,4 @@
 | [0027: shared workspace environment](0027-shared-workspace-environment.md) | One Python 3.12 uv environment, lockfile and build/run configuration across six sibling projects. | Implemented; verified with Godot 4.7 | `b147bb5b4949bba649d178e8c144f15bf845421e` |
 | [0028: app flight channel](0028-app-flight-channel.md) | App-controlled 20 m takeoff, settled hover and LOS approach with expiring RC channel. | Complete; committed | `fac9ee367cf79f7a4a11fbd88f12c925467022cf` |
 | [0029: renderer collision completion](0029-render-collision-end.md) | Truck contact, authoritative scenario completion, app latch and terminal MCAP drain. | Complete; committed | `aecc8312cea2cea622fd08b893b51d9be794ffbb` |
-| [0030: LOS telemetry in degrees](0030-los-telemetry-degrees.md) | Focused 30Hz bearing/rate/TTC/confidence/state stream from app to MCAP. | Implemented; verified, uncommitted | Pending |
+| [0030: LOS telemetry in degrees](0030-los-telemetry-degrees.md) | Focused 30Hz bearing/rate/TTC/confidence/state stream from app to MCAP. | Complete; committed | `610c92bb54fcfc39df37af0b532515e2b2354da6` |
