@@ -1,6 +1,6 @@
 # Center the target horizontally before ending yaw search
 
-Status: Implemented and verified; uncommitted. Implementation commit: Pending.
+Status: Complete; committed. Implementation commit: `fca7f74d8d8fbf6d74c537420d5e4ea8a44c49e5`.
 
 ## Goal and defaults
 After the existing takeoff and three-second hover, do not end search merely
@@ -56,3 +56,14 @@ readback and no-target regression. Keep previous unrelated doc edits intact.
   uncommitted image-flow documentation in los_tracking/docs remains untouched.
 - No commits or pushes requested/performed. Restart bullet_app to load this
   revision; named centering gain/tolerance constants remain easy to tune.
+
+## Commit record
+
+User requested committing all projects and pushing to GitHub.
+
+- bullet_app: `e2017bbbaada2c668df3fe1705433c0300168976`
+- bullet_drone: `fca7f74d8d8fbf6d74c537420d5e4ea8a44c49e5`
+- bullet_render: `c94b9818dae7413f11f2e4830fd576be8f44d1c4`
+- los_tracking: `1717c192705372b0ab9cf1169fa3445cbf80db0b`
+
+The los_tracking commit documents image flow and message fields; its runtime code is unchanged.
