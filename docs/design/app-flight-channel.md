@@ -97,3 +97,12 @@ latches it on the first feedback for that episode and sets goal = initial
 barometer + selected height. Start/Reset keep that height; a new Apply creates a
 new episode with its newly confirmed value. V1 feedback keeps legacy 20 m.
 This configuration is not ground-truth position feedback for the controller.
+
+The app's post-hover target check now enters YAW_SEARCH when no usable bbox
+appears within 100 ms. It commands 15 deg/s positive yaw for at most one measured
+net circle, holding altitude/level attitude. A usable candidate enters YAW_SETTLE
+(low yaw speed/heading error for 0.3 s) and then normal LOS acquisition at the new
+heading. Lost candidates resume the original sweep; one full circle or a 34 s
+simulation-time deadline withdraws RC and freezes physics. This adds no physics
+runner logic or wire changes; the app owns search state. See
+[plan 0034](../../plan/0034-yaw-target-search.md).
