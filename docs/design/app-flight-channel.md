@@ -100,9 +100,14 @@ This configuration is not ground-truth position feedback for the controller.
 
 The app's post-hover target check now enters YAW_SEARCH when no usable bbox
 appears within 100 ms. It commands 15 deg/s positive yaw for at most one measured
-net circle, holding altitude/level attitude. A usable candidate enters YAW_SETTLE
-(low yaw speed/heading error for 0.3 s) and then normal LOS acquisition at the new
-heading. Lost candidates resume the original sweep; one full circle or a 34 s
+net circle, holding altitude/level attitude. A usable candidate enters YAW_CENTER, which uses bounded proportional yaw
+to put the bbox center within +/-10 image pixels of horizontal center.
+YAW_SETTLE requires that band and low measured yaw speed continuously for
+0.3 s, then starts LOS acquisition at the new heading. A visible off-center
+target cannot start approach; drift resumes centering. Lost candidates resume the original sweep; one full circle or a 34 s
 simulation-time deadline withdraws RC and freezes physics. This adds no physics
 runner logic or wire changes; the app owns search state. See
 [plan 0034](../../plan/0034-yaw-target-search.md).
+
+See [plan 0035](../../plan/0035-center-target-before-los.md) for centering
+defaults, diagnostics and verification.

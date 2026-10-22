@@ -34,3 +34,4 @@
 | [0032: scenario takeoff height](0032-scenario-takeoff-height.md) | Configurable relative climb with preset persistence and automatic terrain-based starting Z. | Complete; committed | `1163fc93b80b7753cfc7528eeb4ff77718f75dab` |
 | [0033: LOS envelope errors](0033-los-envelope-errors.md) | Allow +/-35 degree azimuth and expose rejected bearing, limits and physics stop reasons in mission logs. | Complete; committed | `f6e5e302242388f337fee28aff70690f316d43c6` |
 | [0034: yaw target search](0034-yaw-target-search.md) | One measured yaw circle, candidate braking/settling and continuous LOS handoff at the new heading. | Complete; committed | `0861c8cfd6d0442773998500200092bd2660d87b` |
+| [0035: center target before LOS](0035-center-target-before-los.md) | Proportional yaw centers the bbox horizontally before settling and ending search. | Implemented; verified, uncommitted | Pending |
