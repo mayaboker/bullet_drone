@@ -1,6 +1,6 @@
 # Yaw target search before LOS acquisition
 
-Status: Implemented and verified; uncommitted. Implementation commit: Pending.
+Status: Complete; committed. Implementation commit: `0861c8cfd6d0442773998500200092bd2660d87b`.
 
 ## Goal, defaults and behavior
 After the three-second settled hover, check for a fresh usable bbox (at most
@@ -66,3 +66,14 @@ no-target and existing mission/MCAP regressions. Record results below.
   No commits/pushes or system-tool installation. Whitespace checks passed.
   Core physics suite/native rebuild not repeated: runtime physics/native code
   are unchanged; real-socket/display regressions exercised the installed build.
+
+## Commit record
+
+User requested committing all projects after implementation and verification.
+
+- los_tracking: `deb8c66365975ee5b235f5906661ebd141115536`
+- bullet_app: `967cdf256fab67f3471085db7fbae8c3ce5f9889`
+- bullet_drone: `0861c8cfd6d0442773998500200092bd2660d87b`
+- bullet_render: `95cdd2650b852cc43d031813f1d30a8ed19a07ce`
+
+Implementation message: `yaw target search version1`. No push requested or performed.
