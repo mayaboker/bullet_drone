@@ -47,3 +47,4 @@
 | [0045: flight analysis recording](0045-flight-analysis-recording.md) | Automatic flight MCAP, exact frame matching and offline failure diagnostics. | Implemented; recording and analysis checks passed | `8cde477426dc12f2c6be12542487a9edd50f8890` |
 | [0046: Run all task only](0046-run-all-task-only.md) | Remove legacy tasks and use the existing four-service launcher from one workspace task. | Verified; folder cleanup committed, parent workspace uncommitted | `28e1dc85dd1b0cd9f5339946a0f425532bb27735` (folder cleanup); workspace Pending |
 | [0047: FlightLens task](0047-flight-lens-task.md) | Add FlightLens: Open and register its workspace package. | Verified; parent workspace outside Git | Pending |
+| [0048: FlightLens frame lookup](0048-flight-lens-frame-lookup.md) | Repair MCAP reader time arguments and exclusive upper bounds. | Complete; 36 checks and real frame decoding passed | `d6e87440a15d353749764ef422075cab0cab44c0` (flight_lens) |
