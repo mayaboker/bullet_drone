@@ -119,7 +119,7 @@ they are not silently clipped or resampled.
 
 `sensors.barometer.filter_enabled` is a strict boolean, default `false`.
 `filter_time_constant_s` is positive finite seconds, default `0.1`, validated even
-when filtering is disabled. The supplied `configs/basic.yaml` enables filtering.
+when filtering is disabled. The supplied `../basic.yaml` enables filtering.
 
 The filter runs inside the sensor after noise and bias, before altitude inversion:
 
@@ -143,7 +143,7 @@ reduces random noise, not fixed bias, drift or outliers.
 
 ## Configuration and noise
 
-The supplied `configs/basic.yaml` profile uses 2.3 Pa pressure standard deviation,
+The supplied `../basic.yaml` profile uses 2.3 Pa pressure standard deviation,
 the BMP388's typical high-resolution noise with IIR off ([Bosch datasheet, table 8](https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp388-ds001.pdf)).
 In this atmosphere model that corresponds to approximately 0.19 m unfiltered
 altitude standard deviation near sea level. With the enabled 0.1 s filter at
@@ -233,7 +233,7 @@ enabled/noisy/disabled. Run `uv run --locked pytest -q tests/test_sensors.py`.
 The external-RC runner accepts the existing physics YAML:
 
 ```sh
-uv run --locked --extra render python -m examples.external_rc.main --config configs/basic.yaml
+uv run --locked --extra render python -m examples.external_rc.main --config ../basic.yaml
 ```
 
 It uses the loaded sensor, mass, timestep, spawn, force and wind settings. Godot
@@ -335,7 +335,7 @@ and contacts remain driven by ground truth.
 
 ## ICM-42688-P density-based IMU profile
 
-`configs/basic.yaml` now selects `sensors.imu.noise_model: density` and enables
+`../basic.yaml` now selects `sensors.imu.noise_model: density` and enables
 sensor filtering. The reference chip is used by the
 [SpeedyBee F405 V4](https://www.speedybee.com/speedybee-f405-v4-bls-60a-30x30-fc-esc-stack/?setCurrencyId=2)
 and [Holybro Pixhawk 6C](https://holybro.com/products/pixhawk-6c?variant=42420293599421).

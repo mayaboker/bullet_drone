@@ -1,3 +1,4 @@
+from pathlib import Path
 from dataclasses import FrozenInstanceError, asdict, replace
 from math import exp, pi
 from statistics import mean, stdev
@@ -178,7 +179,7 @@ def test_invalid_python_sensor_settings(settings_type, kwargs):
 
 
 def test_sensor_yaml_settings_and_defaults(tmp_path):
-    data = yaml.safe_load(open('configs/basic.yaml'))
+    data = yaml.safe_load(open(Path(__file__).resolve().parents[2] / 'basic.yaml'))
     data.pop('pose_sources', None)  # Test sensor defaults independently of the demo's selected outputs.
     data.pop('sensors', None)
     path = tmp_path / 'config.yaml'
@@ -216,7 +217,7 @@ def test_sensor_observations_and_noisy_physics_independence(config):
     for settings in (SensorsSettings(), noisy_settings, disabled_settings,
                      SensorsSettings(imu=ImuSettings(enabled=False)),
                      SensorsSettings(barometer=BarometerSettings(enabled=False)),
-                     YamlConfigLoader().load('configs/basic.yaml').sensors):
+                     YamlConfigLoader().load(Path(__file__).resolve().parents[2] / 'basic.yaml').sensors):
         sim = make_sim(replace(config, sensors=settings))
         try:
             observations = [sim.reset(), sim.step(RcInput()),
@@ -349,7 +350,7 @@ def test_disabled_filter_preserves_instantaneous_pressure_and_noise():
 
 
 def test_demo_filter_reduces_noise_and_reset_restarts_history():
-    settings = YamlConfigLoader().load('configs/basic.yaml').sensors.barometer
+    settings = YamlConfigLoader().load(Path(__file__).resolve().parents[2] / 'basic.yaml').sensors.barometer
     assert settings.filter_enabled and settings.filter_time_constant_s == 0.1
     filtered, raw = BarometerSensor(settings), BarometerSensor(replace(settings, filter_enabled=False))
     initial = filtered.reset(state())

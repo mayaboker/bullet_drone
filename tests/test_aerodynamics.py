@@ -1,3 +1,4 @@
+from pathlib import Path
 from dataclasses import replace
 from math import pi, sqrt
 from statistics import mean, stdev
@@ -233,7 +234,7 @@ def test_effect_parameters_reject_invalid_values(settings_type,kwargs):
 
 
 def test_yaml_defaults_roundtrip_flags_and_unknown_fields(tmp_path):
-    data = yaml.safe_load(open('configs/basic.yaml'))
+    data = yaml.safe_load(open(Path(__file__).resolve().parents[2] / 'basic.yaml'))
     data.pop('forces',None)
     data.pop('wind',None)
     path = tmp_path/'forces.yaml'

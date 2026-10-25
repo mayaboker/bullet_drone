@@ -138,7 +138,7 @@ settings and displays the physics snapshot.
 
 ## Configuration and compatibility
 
-See the fully commented `configs/basic.yaml`. Optional `forces` and `wind`
+See the fully commented `../basic.yaml`. Optional `forces` and `wind`
 sections are loaded by `YamlConfigLoader`; omitted sections use enabled-effect,
 calm-wind defaults. Python settings are `ForcesSettings`, individual effect
 settings and `WindSettings` in `bullet_drone.config`. Reject unknown keys,
@@ -149,7 +149,7 @@ inconsistent bounds before opening physics resources.
 from dataclasses import replace
 from bullet_drone.config import ForcesSettings, WindSettings, YamlConfigLoader
 
-config = YamlConfigLoader().load('configs/basic.yaml')
+config = YamlConfigLoader().load('../basic.yaml')
 # Disable one effect without changing the others.
 config = replace(config, forces=replace(config.forces,
                  ground_effect=replace(config.forces.ground_effect, enabled=False)))

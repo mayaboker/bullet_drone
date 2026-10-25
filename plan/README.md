@@ -49,3 +49,6 @@
 | [0047: FlightLens task](0047-flight-lens-task.md) | Add FlightLens: Open and register its workspace package. | Verified; parent workspace outside Git | Pending |
 | [0048: FlightLens frame lookup](0048-flight-lens-frame-lookup.md) | Repair MCAP reader time arguments and exclusive upper bounds. | Complete; 36 checks and real frame decoding passed | `d6e87440a15d353749764ef422075cab0cab44c0` (flight_lens) |
 | [0049: FlightLens controls and wind](0049-flight-lens-controls.md) | Plot measured attitude, acknowledged commands and recorded wind with optional run overlay. | Complete; 47 checks and real-recording rendering passed | `e3e9b3bf82a90efbcc0f21b8b2dba142173cbf85` (flight_lens) |
+| [0050: FlightLens velocity](0050-flight-lens-velocity.md) | Compare ground-truth velocity with truth-initialized IMU integration and share run comparison across tabs. | Implemented; 68 tests and real calm/wind rendering passed; uncommitted | Pending |
+| [0051: FlightLens curve colors](0051-flight-lens-curve-colors.md) | Use distinct solid colors for overlapping data curves. | Implemented; 42 checks and visual verification passed; uncommitted | Pending |
+| [0052: Workspace-root basic config](0052-workspace-root-config.md) | Move the shared physics profile to the workspace root and update Run All and active references. | Implemented; uncommitted | Pending |

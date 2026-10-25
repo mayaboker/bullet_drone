@@ -63,7 +63,7 @@ without advancing simulation time; active capture scheduling remains unchanged.
 
 ## Sensor-derived camera pose
 
-The external-RC example accepts `--config configs/basic.yaml` for physics YAML.
+The external-RC example accepts `--config ../basic.yaml` for physics YAML.
 Set `pose_sources.altitude: barometer` and `pose_sources.attitude: imu` to render
 measured altitude and complementary-filter attitude. The same attitude is sent
 to the navigation app. Ground-truth defaults, true XY/velocity and all capture

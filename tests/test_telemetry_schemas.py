@@ -1,3 +1,4 @@
+from pathlib import Path
 from copy import deepcopy
 from dataclasses import asdict, fields, replace
 import json
@@ -204,7 +205,7 @@ def test_yaml_defaults_and_independent_selection(tmp_path, config):
     for flag in OPTIONAL_TOPICS:
         settings = load_yaml(tmp_path, {flag: False}).telemetry
         assert set(selected_schemas(settings)) == set(TOPIC_SCHEMAS) - {OPTIONAL_TOPICS[flag]}
-    assert YamlConfigLoader().load('configs/basic.yaml').telemetry == TelemetrySettings()
+    assert YamlConfigLoader().load(Path(__file__).resolve().parents[2] / 'basic.yaml').telemetry == TelemetrySettings()
 
 
 @pytest.mark.parametrize('value', [None, [], False, {'control': 'false'}, {'control': 0},

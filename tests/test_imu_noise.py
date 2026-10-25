@@ -1,4 +1,5 @@
 """Datasheet density conventions, discrete filtering and residual bias dynamics."""
+from pathlib import Path
 from dataclasses import replace
 from math import cos, pi, sin, sqrt
 from random import Random
@@ -170,7 +171,7 @@ def test_period_and_nyquist_are_validated_before_simulation_resources(config):
 
 
 def test_yaml_profile_matches_datasheet_and_calibrated_defaults():
-    settings = YamlConfigLoader().load('configs/basic.yaml').sensors.imu
+    settings = YamlConfigLoader().load(Path(__file__).resolve().parents[2] / 'basic.yaml').sensors.imu
     assert settings.noise_model == 'density' and settings.filter_enabled
     assert settings.accelerometer_noise_density_m_s2_sqrt_hz == pytest.approx(ACCEL_DENSITY)
     assert settings.gyro_noise_density_rad_s_sqrt_hz == pytest.approx(GYRO_DENSITY)

@@ -1,3 +1,4 @@
+from pathlib import Path
 from dataclasses import replace
 from math import pi
 from unittest.mock import Mock
@@ -52,8 +53,8 @@ def provider(source, config):
 
 
 def test_selector_defaults_validation_and_unsupported_before_resources(tmp_path):
-    assert YamlConfigLoader().load('configs/basic.yaml').control.backend == 'internal'
-    data = yaml.safe_load(open('configs/basic.yaml'))
+    assert YamlConfigLoader().load(Path(__file__).resolve().parents[2] / 'basic.yaml').control.backend == 'internal'
+    data = yaml.safe_load(open(Path(__file__).resolve().parents[2] / 'basic.yaml'))
     data['control'] = {'backend': 'betaflight'}
     path = tmp_path / 'bf.yaml'
     path.write_text(yaml.safe_dump(data))

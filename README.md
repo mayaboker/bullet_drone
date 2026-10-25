@@ -121,7 +121,7 @@ of any external viewer. Callers own observation-consumer reset/consume/close.
 
 New aerodynamic effects default to enabled, with calm ambient wind. Configure
 independent drag, damping, inflow, flapping, gyroscopic, ground-effect and local
-propwash settings through Python or the commented `configs/basic.yaml` loader.
+propwash settings through Python or the commented `../basic.yaml` loader.
 Wind supports a world velocity vector and repeatable smooth gusts. Existing
 example CLIs use Python defaults and do not load YAML. For exact ideal-rotor
 experiments, select `ForcesSettings.ideal()` and disable ambient wind.
@@ -132,7 +132,7 @@ See [models, defaults and compatibility](docs/design/aerodynamics.md).
 The telemetry package defines ten simulation topic schemas with a shared header
 (schema version, drone/episode identity, step and simulation time). Seven optional
 topics can be selected with `SimulationConfig.telemetry` or the commented
-`telemetry` section in `configs/basic.yaml`; ground truth, config and events are
+`telemetry` section in `../basic.yaml`; ground truth, config and events are
 mandatory. `selected_schemas(settings)` returns the selected topic/schema mapping.
 
 These contracts do not start recording or change physics. The optional Angle
@@ -181,7 +181,7 @@ not need Godot. See [the transport/control design](docs/design/zmq-rendering.md)
 
 ## Sensor pose for Godot and app feedback
 
-Run the external-RC example with `--config configs/basic.yaml` to load physics
+Run the external-RC example with `--config ../basic.yaml` to load physics
 sensor noise and pose settings. Set `pose_sources.altitude: barometer` and
 `pose_sources.attitude: imu` to use measured render height and an IMU complementary
 filter for both camera and app attitude. Existing launches retain their defaults.
@@ -194,7 +194,7 @@ render, transport and advertised platform configuration, plus configuration path
 `physics_config_path: null` means the built-in defaults were used. Diagnostics
 continue on stderr; the banner precedes physics initialization.
 
-The barometer in `configs/basic.yaml` uses `filter_enabled: true` and
+The barometer in `../basic.yaml` uses `filter_enabled: true` and
 `filter_time_constant_s: 0.1` under `sensors.barometer`. It smooths pressure before
 altitude conversion for rendering and app feedback. Set `filter_enabled: false`
 for direct noisy readings. Omitted flags default to false in the library.

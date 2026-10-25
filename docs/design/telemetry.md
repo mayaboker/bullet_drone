@@ -99,7 +99,7 @@ Wall elapsed time uses a monotonic clock and is not an absolute date/time.
 
 `SimulationConfig.telemetry` holds `TelemetrySettings`. Seven strict boolean
 fields select optional topics and default to true; see the commented
-`configs/basic.yaml`. Unknown keys and non-booleans are rejected. Ground truth,
+`../basic.yaml`. Unknown keys and non-booleans are rejected. Ground truth,
 config and events cannot be switched off. Telemetry sensor flags select topics;
 `sensors.imu.enabled` and `sensors.barometer.enabled` control measurements.
 
