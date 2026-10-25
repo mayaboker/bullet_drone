@@ -1,5 +1,6 @@
 """One RC request per physics step; the caller owns the execution loop."""
 
+from bullet_drone.attitude import AttitudeEstimator
 from bullet_drone.commands import HighLevelCommand, InvalidCommandError, RcInput, MotorAllocation
 from bullet_drone.composition import FlightCommandProvider, validate_control_backend
 from bullet_drone.config import SimulationConfig
@@ -39,15 +40,25 @@ class RcSimulation:
             stabilization if stabilization is not None else InternalFlightController(control_settings),
             IdealStateFeedback(), MotorMixer(vehicle), self._timestep_s,
         )
-        self._environment = DroneEnvironment(PyBulletPhysics(
-            config, vehicle, motor_dynamics=motor_dynamics, propeller_model=propeller_model,
-        ), imu=(ImuSensor(config.simulation.gravity_m_s2, config.sensors.imu)
+        self._physics = PyBulletPhysics(config, vehicle, motor_dynamics=motor_dynamics, propeller_model=propeller_model)
+        self._environment = DroneEnvironment(self._physics, imu=(ImuSensor(config.simulation.gravity_m_s2, config.sensors.imu, sample_period_s=self._timestep_s)
                 if config.sensors.imu.enabled else None),
             barometer=(BarometerSensor(config.sensors.barometer)
-                       if config.sensors.barometer.enabled else None))
+                       if config.sensors.barometer.enabled else None),
+            attitude_estimator=(AttitudeEstimator(config.simulation.gravity_m_s2, config.attitude_estimator)
+                                if config.pose_sources.attitude == 'imu' else None))
         self._observation: DroneObservation | None = None
         self._last_command: HighLevelCommand | None = None
         self._closed = False
+
+    @property
+    def wind(self):
+        return self._physics.wind
+
+    def set_wind(self, settings):
+        if self._closed or self._observation is None:
+            raise LifecycleError('Simulation must be reset before updating wind')
+        self._physics.set_wind(settings)
 
     @property
     def timestep_s(self) -> float:

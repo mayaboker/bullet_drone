@@ -6,7 +6,7 @@ imports start no I/O. The library remains transport-independent. Existing UDP
 render adapters and the PlotJuggler sender remain available.
 
 RenderPublisher selects observations at camera FPS in simulation time and puts
-immutable states into a one-entry queue without blocking. A worker owns ZeroMQ,
+immutable resolved poses into a one-entry queue without blocking. A worker owns ZeroMQ,
 JSON encoding and TCP publication. Full queues replace old states and increment a
 counter. Episode changes restart the schedule. Stream sequence remains monotonic.
 The example paces headless execution when this option is used. All workers close
@@ -60,3 +60,19 @@ on port 5555 at transitions and every second. Godot shows this actual state and
 requires a fresh heartbeat relationship before enabling controls. RenderPublisher
 holds immutable observations and repeats stopped poses at 1 Hz for late viewers,
 without advancing simulation time; active capture scheduling remains unchanged.
+
+## Sensor-derived camera pose
+
+The external-RC example accepts `--config configs/basic.yaml` for physics YAML.
+Set `pose_sources.altitude: barometer` and `pose_sources.attitude: imu` to render
+measured altitude and complementary-filter attitude. The same attitude is sent
+to the navigation app. Ground-truth defaults, true XY/velocity and all capture
+source stamps are preserved. Held packets use the cached resolved pose.
+
+Noise is generated only by the physics sensors, with per-sample standard
+deviations, fixed biases and seeds in YAML. The filter runs at physics frequency
+and restarts on reset/spawn. A required disabled sensor is rejected, without
+ground-truth fallback. See [sensor pose configuration](sensors.md#sensor-pose-selection-and-attitude-estimation).
+
+The JSON render profile continues to configure transport, capture FPS and camera.
+The older standalone render YAML source selectors are unchanged.

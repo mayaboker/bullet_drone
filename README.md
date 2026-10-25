@@ -178,3 +178,48 @@ The default profile is `../bullet_render/configs/physics.json`; override it with
 `--render-config`. Keep sibling bullet_msgs installed through the existing render
 extra. Direct `run_demo()` calls without a control adapter remain one-shot and do
 not need Godot. See [the transport/control design](docs/design/zmq-rendering.md).
+
+## Sensor pose for Godot and app feedback
+
+Run the external-RC example with `--config configs/basic.yaml` to load physics
+sensor noise and pose settings. Set `pose_sources.altitude: barometer` and
+`pose_sources.attitude: imu` to use measured render height and an IMU complementary
+filter for both camera and app attitude. Existing launches retain their defaults.
+See [configuration, noise and estimator limits](docs/design/sensors.md#sensor-pose-selection-and-attitude-estimation).
+
+The external-RC runner prints a `bullet_drone loaded configuration` banner to
+stdout once at startup. Its indented JSON contains the effective simulation
+settings (including defaults and the headless override), flight control, vehicle,
+render, transport and advertised platform configuration, plus configuration paths.
+`physics_config_path: null` means the built-in defaults were used. Diagnostics
+continue on stderr; the banner precedes physics initialization.
+
+The barometer in `configs/basic.yaml` uses `filter_enabled: true` and
+`filter_time_constant_s: 0.1` under `sensors.barometer`. It smooths pressure before
+altitude conversion for rendering and app feedback. Set `filter_enabled: false`
+for direct noisy readings. Omitted flags default to false in the library.
+
+The IMU demo now uses an ICM-42688-P density profile with sensor filtering:
+`sensors.imu.noise_model: density`, `filter_enabled: true`, acceleration cutoff
+30 Hz and gyro cutoff 60 Hz. Fixed bias and residual bias drift remain zero as a
+calibrated baseline. See [IMU fields, units and model limits](docs/design/sensors.md#icm-42688-p-density-based-imu-profile).
+Omitted options preserve the legacy per-sample noise model and disable filtering.
+
+### Live wind in Godot
+
+With the external-RC/LOS workflow, click **Wind** beside **Scenario**, edit world
+XYZ mean velocity (m/s), gust standard deviations (m/s), correlation time (s)
+and seed, then **Apply wind**. +Z points up; the vector points toward air travel.
+Opening/closing the panel does not change wind. Apply works while stopped without
+stepping, or live during flight. Start, Reset and spawn changes retain settings
+and restart gust history; restarting physics reloads YAML defaults. The spectator
+windsock shows actual mean-plus-gust velocity and is excluded from drone images.
+See [runtime wind behavior](docs/design/aerodynamics.md#runtime-wind-updates).
+
+### Recorded flight diagnostics
+
+The standard workspace **Bullet: Run all** task now records each external-RC
+flight automatically in MCAP, with separate process logs per launch. Actual ground
+truth, available sensor outputs, effective configuration and wind are recorded
+independently of render-pose selection. See [telemetry design](docs/design/telemetry.md#external-rc-flight-recording-adapter)
+and the sibling recorder README for the offline clipping report command.

@@ -1,7 +1,7 @@
 """Load and validate simulation configuration before acquiring resources."""
 
 from dataclasses import dataclass, field, fields
-from math import isfinite, pi
+from math import hypot, isfinite, pi
 from pathlib import Path
 
 import yaml
@@ -147,15 +147,43 @@ class ImuSettings:
     gyro_stddev_rad_s: Vector3 = ZERO_VECTOR
     gyro_bias_rad_s: Vector3 = ZERO_VECTOR
     seed: int = DEFAULT_IMU_SEED
+    noise_model: str = 'per_sample'
+    accelerometer_noise_density_m_s2_sqrt_hz: Vector3 = ZERO_VECTOR
+    gyro_noise_density_rad_s_sqrt_hz: Vector3 = ZERO_VECTOR
+    filter_enabled: bool = False
+    accelerometer_cutoff_hz: float = 30.0
+    gyro_cutoff_hz: float = 60.0
+    accelerometer_bias_random_walk_m_s2_sqrt_s: Vector3 = ZERO_VECTOR
+    gyro_bias_random_walk_rad_s_sqrt_s: Vector3 = ZERO_VECTOR
 
     def __post_init__(self) -> None:
         _sensor_options(self.enabled, self.seed)
+        if self.noise_model not in ('per_sample', 'density'):
+            raise ConfigurationError('sensors.imu.noise_model must be per_sample or density')
+        if type(self.filter_enabled) is not bool:
+            raise ConfigurationError('sensors.imu.filter_enabled must be a boolean')
         for name in ("accelerometer_stddev_m_s2", "accelerometer_bias_m_s2",
-                     "gyro_stddev_rad_s", "gyro_bias_rad_s"):
+                     "gyro_stddev_rad_s", "gyro_bias_rad_s",
+                     "accelerometer_noise_density_m_s2_sqrt_hz", "gyro_noise_density_rad_s_sqrt_hz",
+                     "accelerometer_bias_random_walk_m_s2_sqrt_s", "gyro_bias_random_walk_rad_s_sqrt_s"):
             values = _vector(getattr(self, name), f"sensors.imu.{name}")
-            if "stddev" in name and any(value < 0 for value in values):
+            if any(word in name for word in ('stddev', 'density', 'random_walk')) and any(value < 0 for value in values):
                 raise ConfigurationError(f"sensors.imu.{name} must be nonnegative")
             object.__setattr__(self, name, values)
+        if self.noise_model == 'density' and any((*self.accelerometer_stddev_m_s2, *self.gyro_stddev_rad_s)):
+            raise ConfigurationError('density mode cannot use per-sample IMU standard deviations')
+        if self.noise_model == 'per_sample' and any((*self.accelerometer_noise_density_m_s2_sqrt_hz,
+                                                   *self.gyro_noise_density_rad_s_sqrt_hz)):
+            raise ConfigurationError('IMU noise densities require density mode')
+        for name in ('accelerometer_cutoff_hz', 'gyro_cutoff_hz'):
+            object.__setattr__(self, name, _number(getattr(self, name), f'sensors.imu.{name}', positive=True))
+
+    def validate_sample_period(self, period_s: float) -> float:
+        period = _number(period_s, 'imu.sample_period_s', positive=True)
+        if self.filter_enabled and any(2 * cutoff * period >= 1 for cutoff in
+                                       (self.accelerometer_cutoff_hz, self.gyro_cutoff_hz)):
+            raise ConfigurationError('IMU filter cutoffs must be below the sampling Nyquist frequency')
+        return period
 
 
 @dataclass(frozen=True, slots=True)
@@ -167,13 +195,17 @@ class BarometerSettings:
     reference_temperature_k: float = DEFAULT_REFERENCE_TEMPERATURE_K
     reference_altitude_m: float = DEFAULT_REFERENCE_ALTITUDE_M
     seed: int = DEFAULT_BAROMETER_SEED
+    filter_enabled: bool = False
+    filter_time_constant_s: float = 0.1
 
     def __post_init__(self) -> None:
         _sensor_options(self.enabled, self.seed)
+        if type(self.filter_enabled) is not bool:
+            raise ConfigurationError('sensors.barometer.filter_enabled must be a boolean')
         for name in ("pressure_stddev_pa", "pressure_bias_pa", "reference_pressure_pa",
-                     "reference_temperature_k", "reference_altitude_m"):
+                     "reference_temperature_k", "reference_altitude_m", "filter_time_constant_s"):
             value = _number(getattr(self, name), f"sensors.barometer.{name}",
-                            positive=name in ("reference_pressure_pa", "reference_temperature_k"))
+                            positive=name in ("reference_pressure_pa", "reference_temperature_k", "filter_time_constant_s"))
             if name == "pressure_stddev_pa" and value < 0:
                 raise ConfigurationError("sensors.barometer.pressure_stddev_pa must be nonnegative")
             object.__setattr__(self, name, value)
@@ -361,6 +393,33 @@ class TelemetrySettings:
 
 
 @dataclass(frozen=True, slots=True)
+class PoseSources:
+    altitude: str = 'ground_truth'
+    attitude: str = 'ground_truth'
+
+    def __post_init__(self) -> None:
+        if self.altitude not in ('ground_truth', 'barometer'):
+            raise ConfigurationError('pose_sources.altitude must be ground_truth or barometer')
+        if self.attitude not in ('ground_truth', 'imu'):
+            raise ConfigurationError('pose_sources.attitude must be ground_truth or imu')
+
+
+@dataclass(frozen=True, slots=True)
+class AttitudeEstimatorSettings:
+    kp_s_inv: float = 2.0
+    ki_s_inv2: float = 0.05
+    acceleration_rejection_fraction: float = 0.2
+
+    def __post_init__(self) -> None:
+        for name in ('kp_s_inv', 'ki_s_inv2'):
+            object.__setattr__(self, name, _nonnegative(getattr(self, name), f'attitude_estimator.{name}'))
+        fraction = _number(self.acceleration_rejection_fraction, 'attitude_estimator.acceleration_rejection_fraction')
+        if not 0 < fraction < 1:
+            raise ConfigurationError('attitude_estimator.acceleration_rejection_fraction must be between 0 and 1')
+        object.__setattr__(self, 'acceleration_rejection_fraction', fraction)
+
+
+@dataclass(frozen=True, slots=True)
 class SimulationConfig:
     simulation: SimulationSettings
     drone: DroneSettings
@@ -370,16 +429,30 @@ class SimulationConfig:
     forces: ForcesSettings = field(default_factory=ForcesSettings)
     wind: WindSettings = field(default_factory=WindSettings)
     telemetry: TelemetrySettings = field(default_factory=TelemetrySettings)
+    pose_sources: PoseSources = field(default_factory=PoseSources)
+    attitude_estimator: AttitudeEstimatorSettings = field(default_factory=AttitudeEstimatorSettings)
 
     def __post_init__(self) -> None:
+        if not isinstance(self.pose_sources, PoseSources) or not isinstance(self.attitude_estimator, AttitudeEstimatorSettings):
+            raise ConfigurationError('pose_sources/attitude_estimator settings have invalid types')
         if not isinstance(self.telemetry, TelemetrySettings):
             raise ConfigurationError('telemetry must be TelemetrySettings')
         if not isinstance(self.rc, RcSettings):
             raise ConfigurationError('rc must be RcSettings')
         if not isinstance(self.sensors, SensorsSettings):
             raise ConfigurationError('sensors must be SensorsSettings')
+        if self.sensors.imu.enabled:
+            self.sensors.imu.validate_sample_period(self.simulation.timestep_s)
         if not isinstance(self.forces, ForcesSettings) or not isinstance(self.wind, WindSettings):
             raise ConfigurationError('forces/wind must be ForcesSettings/WindSettings')
+        if self.pose_sources.altitude == 'barometer' and not self.sensors.barometer.enabled:
+            raise ConfigurationError('barometer pose source requires sensors.barometer.enabled')
+        if self.pose_sources.attitude == 'imu':
+            if not self.sensors.imu.enabled:
+                raise ConfigurationError('imu pose source requires sensors.imu.enabled')
+            gravity = hypot(*self.simulation.gravity_m_s2)
+            if not isfinite(gravity) or gravity <= 0:
+                raise ConfigurationError('imu attitude estimation requires finite nonzero gravity')
 
 
 def _force_setting_types() -> dict:
@@ -407,7 +480,7 @@ class YamlConfigLoader:
             data = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
         except (OSError, UnicodeError, yaml.YAMLError) as exc:
             raise ConfigurationError(f"Cannot read YAML configuration {path}: {exc}") from exc
-        root = _mapping(data, "configuration", {"simulation", "drone"}, {"control", "rc", "sensors", "forces", "wind", "telemetry"})
+        root = _mapping(data, "configuration", {"simulation", "drone"}, {"control", "rc", "sensors", "forces", "wind", "telemetry", "pose_sources", "attitude_estimator"})
         simulation = _mapping(
             root["simulation"], "simulation",
             {"timestep_s", "max_steps", "gravity_m_s2"}, {"gui"},
@@ -429,5 +502,9 @@ class YamlConfigLoader:
         wind = WindSettings(**_mapping(root.get("wind", {}), "wind", set(), set(WindSettings.__dataclass_fields__)))
         telemetry = TelemetrySettings(**_mapping(root.get("telemetry", {}), "telemetry", set(),
                                                  set(TelemetrySettings.__dataclass_fields__)))
+        pose_sources = PoseSources(**_mapping(root.get('pose_sources', {}), 'pose_sources', set(),
+                                               set(PoseSources.__dataclass_fields__)))
+        estimator = AttitudeEstimatorSettings(**_mapping(root.get('attitude_estimator', {}), 'attitude_estimator', set(),
+                                                         set(AttitudeEstimatorSettings.__dataclass_fields__)))
         return SimulationConfig(SimulationSettings(**simulation), DroneSettings(**drone), control, rc,
-                                SensorsSettings(imu, barometer), forces, wind, telemetry)
+                                SensorsSettings(imu, barometer), forces, wind, telemetry, pose_sources, estimator)

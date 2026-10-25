@@ -1,5 +1,6 @@
 """Simulation lifecycle and observations, independent of a physics library."""
 
+from bullet_drone.attitude import AttitudeEstimator
 from bullet_drone.commands import InvalidCommandError, RotorCommand
 from bullet_drone.contracts import LifecycleError, PhysicsBackend, Sensor
 from bullet_drone.models import BarometerReading, DroneObservation, DroneState, ImuReading, SensorReadings
@@ -7,10 +8,12 @@ from bullet_drone.models import BarometerReading, DroneObservation, DroneState, 
 
 class DroneEnvironment:
     def __init__(self, physics: PhysicsBackend, *, imu: Sensor[ImuReading] | None = None,
-                 barometer: Sensor[BarometerReading] | None = None) -> None:
+                 barometer: Sensor[BarometerReading] | None = None,
+                 attitude_estimator: AttitudeEstimator | None = None) -> None:
         self._physics = physics
         self._imu = imu
         self._barometer = barometer
+        self._attitude_estimator = attitude_estimator
         self._ready = False
         self._closed = False
         self._state = None
@@ -53,7 +56,11 @@ class DroneEnvironment:
         imu = (self._imu.reset(state) if reset else self._imu.sample(state)) if self._imu else None
         barometer = ((self._barometer.reset(state) if reset else self._barometer.sample(state))
                      if self._barometer else None)
-        return DroneObservation(state, SensorReadings(imu, barometer))
+        estimate = None
+        if self._attitude_estimator is not None:
+            estimate = (self._attitude_estimator.reset(imu, state.orientation_xyzw) if reset
+                        else self._attitude_estimator.update(imu))
+        return DroneObservation(state, SensorReadings(imu, barometer), estimate)
 
     def close(self) -> None:
         self._ready = False

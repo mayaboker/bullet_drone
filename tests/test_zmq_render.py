@@ -139,3 +139,62 @@ def tcp_profile():
         return {'telemetry_endpoint': f'tcp://127.0.0.1:{telemetry.getsockname()[1]}',
                 'image_endpoint': f'tcp://127.0.0.1:{images.getsockname()[1]}',
                 'control_endpoint': f'tcp://127.0.0.1:{control.getsockname()[1]}'}
+
+
+def test_sensor_pose_and_stopped_republication_keep_measurements(tmp_path, config):
+    import time
+    import zmq
+    from bullet_drone.config import ImuSettings, PoseSources, SensorsSettings, BarometerSettings
+    from bullet_drone.pose import resolve_pose
+    from bullet_drone.simulation import RcSimulation
+    from bullet_drone.commands import RcInput
+    from examples.position_square.demo import FLIGHT_CONTROL_SETTINGS
+
+    sources = PoseSources('barometer', 'imu')
+    config = replace(config, pose_sources=sources,
+                     sensors=SensorsSettings(ImuSettings(gyro_bias_rad_s=(.1, .1, .1)),
+                                             BarometerSettings(pressure_bias_pa=5.)))
+    output = publisher(tmp_path)
+    output.pose_sources = sources
+    (tmp_path/'transport.json').write_text(json.dumps(tcp_profile()))
+    simulation = RcSimulation(config, FLIGHT_CONTROL_SETTINGS)
+    with zmq.Context() as context, context.socket(zmq.SUB) as subscriber:
+        subscriber.setsockopt(zmq.LINGER, 0)
+        subscriber.setsockopt(zmq.SUBSCRIBE, b'render/drone_1/')
+        subscriber.connect(json.loads((tmp_path/'transport.json').read_text())['telemetry_endpoint'])
+        output.start()
+        try:
+            assert subscriber.poll(4000)  # Wait for subscription before submitting a capture.
+            subscriber.recv_multipart()
+            simulation.reset()
+            observation = simulation.step(RcInput())
+            expected = resolve_pose(observation, sources)
+            source = dict(physics_id='physics', episode_id=expected.episode_id, stream_id=output.stream,
+                          step_index=expected.step_index, simulation_time_s=expected.simulation_time_s,
+                          measurement_us=time.monotonic_ns() // 1000)
+            output.set_state(dict(schema_version=1, physics_id='physics', controller_id=None,
+                                  episode_id=expected.episode_id, state='stopped', reason='test',
+                                  simulation_time_s=expected.simulation_time_s))
+            output.consume(observation, source=source)
+            poses = []
+            deadline = time.monotonic() + 4
+            while len(poses) < 2 and time.monotonic() < deadline:
+                if subscriber.poll(100):
+                    topic, payload = subscriber.recv_multipart()
+                    if topic == b'render/drone_1/pose':
+                        poses.append(json.loads(payload))
+            assert len(poses) == 2 and output.error is None
+            assert poses[1]['sequence'] > poses[0]['sequence']
+            for pose in poses:
+                assert pose['position_m'] == list(expected.position_m)
+                assert pose['position_m'][:2] == list(observation.ground_truth.position_m[:2])
+                assert pose['position_m'][2] == observation.sensors.barometer.altitude_m
+                assert pose['orientation_xyzw'] == list(expected.orientation_xyzw)
+                assert pose['linear_velocity_m_s'] == list(observation.ground_truth.linear_velocity_m_s)
+                assert pose['source'] == source
+                assert pose['step_index'] == observation.ground_truth.step_index
+            assert expected.position_m != observation.ground_truth.position_m
+            assert expected.orientation_xyzw != observation.ground_truth.orientation_xyzw
+        finally:
+            output.close()
+            simulation.close()

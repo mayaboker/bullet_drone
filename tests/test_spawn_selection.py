@@ -83,14 +83,14 @@ def test_running_and_heartbeat_timeout_rejected(wire):
 
 
 @pytest.mark.parametrize("cleanup_fails", [False, True])
-def test_runner_replaces_only_after_success_and_reset_keeps_spawn(tmp_path, monkeypatch, cleanup_fails):
+def test_runner_replaces_only_after_success_and_reset_keeps_spawn(tmp_path, monkeypatch, cleanup_fails, capsys):
     from examples.external_rc import main as runner
     from bullet_drone.simulation import RcSimulation
     transport = tmp_path / 'transport.json'
     transport.write_text(json.dumps(dict(telemetry_endpoint='tcp://127.0.0.1:5555', image_endpoint='tcp://127.0.0.1:5556',
                                         control_endpoint='tcp://127.0.0.1:5557', flight_command_endpoint='tcp://127.0.0.1:5559')))
     publisher = Mock(transport_path=transport, stream='stream', config={'camera':dict(width_px=2, height_px=2, fov_x_deg=90)})
-    monkeypatch.setattr(runner, 'RenderPublisher', lambda path: publisher)
+    monkeypatch.setattr(runner, 'RenderPublisher', lambda path, **kwargs: publisher)
     monkeypatch.setattr(runner, 'FlightReceiver', Mock())
     states, instances, closed = [], [], []
     class Simulation:
@@ -98,6 +98,11 @@ def test_runner_replaces_only_after_success_and_reset_keeps_spawn(tmp_path, monk
             self.inner = RcSimulation(config, settings, vehicle)
             self.position = config.drone.initial_position_m
             instances.append(self)
+        @property
+        def wind(self):
+            return self.inner.wind
+        def set_wind(self, settings):
+            self.inner.set_wind(settings)
         def reset(self):
             if len(instances) >= 2 and self is instances[1]:  # First candidate fails during initialization.
                 raise RuntimeError('injected candidate reset failure')
@@ -109,11 +114,13 @@ def test_runner_replaces_only_after_success_and_reset_keeps_spawn(tmp_path, monk
                 raise RuntimeError("injected retired simulation cleanup failure")
     class Control:
         physics_id = 'physics'
+        controller_id = None
         state = 'stopped'
         reason = 'startup'
         count = 0
-        def __init__(self, path, renderer, *, scenario, spawn):
+        def __init__(self, path, renderer, *, scenario, spawn, wind):
             self.spawn = spawn
+            self.wind = wind
         def transition(self, state, reason, observation):
             self.state, self.reason = state, reason
             states.append((reason, observation.ground_truth))
@@ -121,15 +128,20 @@ def test_runner_replaces_only_after_success_and_reset_keeps_spawn(tmp_path, monk
             pass
         def poll(self):
             self.count += 1
-            if self.count in (1, 2):
+            if self.count == 1:
+                from dataclasses import asdict
+                from bullet_drone.config import WindSettings
+                self.wind.pending = dict(controller_id="godot", request_id="wind", settings=asdict(WindSettings(velocity_world_m_s=(3., -1., 0.))))
+                return "wind"
+            if self.count in (2, 3):
                 self.spawn.pending = dict(schema_version=1, physics_id='physics', episode_id='episode', controller_id='godot',
                     request_id=f'pick{self.count}', issued_ms=1, scenario_name='Hill', position_m=[30, -20, 40])
-                if self.count == 2:
+                if self.count == 3:
                     assert instances[0] not in closed
                     assert self.spawn.reason == 'initialization_failed'
                     assert instances[0].reset().ground_truth.position_m == (0, 0, .015)
                 return 'spawn'
-            if self.count == 3:
+            if self.count == 4:
                 assert instances[0] in closed and instances[1] in closed
                 return 'reset'
             raise KeyboardInterrupt
@@ -138,8 +150,15 @@ def test_runner_replaces_only_after_success_and_reset_keeps_spawn(tmp_path, monk
     monkeypatch.setattr(runner, 'SimulationControl', Control)
     with pytest.raises(KeyboardInterrupt):
         runner.run('unused', simulation_factory=Simulation)
+    stdout = capsys.readouterr().out
+    assert stdout.count('=== bullet_drone loaded configuration ===') == 1
+    banner = json.loads(stdout.split('\n', 1)[1])
+    assert banner['physics_config_path'] is None
+    assert banner['simulation']['pose_sources'] == dict(altitude='ground_truth', attitude='ground_truth')
+    assert banner['simulation']['sensors']['imu']['gyro_stddev_rad_s'] == [0., 0., 0.]
     assert len(instances) == 3
     assert all(value in closed for value in instances)
+    assert all(value.wind.settings.velocity_world_m_s == (3., -1., 0.) for value in instances)
     initial, applied, reset = [state for _, state in states]
     assert initial.position_m == (0, 0, .015)
     assert applied.position_m == reset.position_m == (30, -20, 40)

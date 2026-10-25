@@ -7,7 +7,7 @@ from bullet_drone.config import ConfigurationError
 
 
 class UnsupportedRenderSourceError(ConfigurationError):
-    """Sensor pose rendering requires a future estimator."""
+    """Legacy standalone render profiles support ground truth only."""
 
 
 def number(value, name, minimum=None, maximum=None):

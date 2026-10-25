@@ -40,7 +40,7 @@ class ImuReading:
 
 @dataclass(frozen=True, slots=True)
 class BarometerReading:
-    """Measured pressure and pressure-derived world-Z altitude."""
+    """Sensor output pressure (optionally filtered) and its world-Z altitude."""
 
     episode_id: str
     step_index: int
@@ -59,9 +59,20 @@ class SensorReadings:
 
 
 @dataclass(frozen=True, slots=True)
+class AttitudeEstimate:
+    """IMU-derived body-to-world XYZW attitude at the measurement time."""
+
+    episode_id: str
+    step_index: int
+    simulation_time_s: float
+    orientation_xyzw: Quaternion
+
+
+@dataclass(frozen=True, slots=True)
 class DroneObservation:
     ground_truth: DroneState
     sensors: SensorReadings = field(default_factory=SensorReadings)
+    attitude_estimate: AttitudeEstimate | None = None
 
 
 @dataclass(frozen=True, slots=True)
