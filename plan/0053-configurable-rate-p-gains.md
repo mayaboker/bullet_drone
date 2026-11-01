@@ -33,7 +33,11 @@ The trial still overshoots; a new complete target-hit scenario remains necessary
 to validate the flight tune.
 
 ## Status
-Implemented; tests, build and controlled response experiment passed. Full approach tune remains unvalidated. Not committed.
+Implemented; tests, build and controlled response experiment passed. Full approach tune remains unvalidated.
 
 ## Implementation commit
-Pending
+`ef298d68646e69d828a97df85dceb7a7a29ef18d`
+
+## Repository snapshot record
+Recorded snapshot: `ef298d68646e69d828a97df85dceb7a7a29ef18d` (bullet_drone repository). This is the new local
+baseline containing the current implementation, not a recovered historical commit.

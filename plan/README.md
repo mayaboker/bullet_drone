@@ -2,12 +2,12 @@
 
 | Plan | Description | Status | Implementation commit |
 | --- | --- | --- | --- |
-| [0003: control diagram SVG](0003-control-diagram-svg.md) | Replace obsolete PNG with current RC/internal-control diagram. | Implemented and verified; uncommitted | Pending |
-| [0004: named constants guidance](0004-named-constants-guidance.md) | Require descriptive constants grouped after module imports. | Implemented and verified; uncommitted | Pending |
-| [0005: altitude hold constants](0005-altitude-hold-constants.md) | Replace example magic numbers with named module constants. | Implemented and verified; uncommitted | Pending |
-| [0006: position square](0006-position-square.md) | Separate XY position/velocity PIDs and fly a settled 3 m square through RC angle mode. | Implemented and verified; uncommitted | Pending |
-| [0007: retire shared CLI/runner](0007-retire-cli-runner.md) | Remove shared execution entry point and dedicated tests; retain library verification and example loops. | Implemented and verified; uncommitted | Pending |
-| [0008: Acro position square](0008-position-square-acro.md) | Fly the same square using upstream angle-to-rate conversion and Acro RC input. | Implemented and verified; uncommitted | Pending |
+| [0003: control diagram SVG](0003-control-diagram-svg.md) | Replace obsolete PNG with current RC/internal-control diagram. | Implemented and verified | `ef298d68646e69d828a97df85dceb7a7a29ef18d` |
+| [0004: named constants guidance](0004-named-constants-guidance.md) | Require descriptive constants grouped after module imports. | Implemented and verified | `ef298d68646e69d828a97df85dceb7a7a29ef18d` |
+| [0005: altitude hold constants](0005-altitude-hold-constants.md) | Replace example magic numbers with named module constants. | Implemented and verified | `ef298d68646e69d828a97df85dceb7a7a29ef18d` |
+| [0006: position square](0006-position-square.md) | Separate XY position/velocity PIDs and fly a settled 3 m square through RC angle mode. | Implemented and verified | `ef298d68646e69d828a97df85dceb7a7a29ef18d` |
+| [0007: retire shared CLI/runner](0007-retire-cli-runner.md) | Remove shared execution entry point and dedicated tests; retain library verification and example loops. | Implemented and verified | `ef298d68646e69d828a97df85dceb7a7a29ef18d` |
+| [0008: Acro position square](0008-position-square-acro.md) | Fly the same square using upstream angle-to-rate conversion and Acro RC input. | Implemented and verified | `ef298d68646e69d828a97df85dceb7a7a29ef18d` |
 | [0009: force implementation chain](0009-force-chain-mapping.md) | Map course effects to implementation stages with a numbered table and SVG tips. | Complete; committed | `ac453654b7378854b8e449280df88016a2ab556b` |
 | [0010: drone ID telemetry](0010-drone-id-telemetry.md) | Propagate configured drone identity into observations and MCAP schemas/payloads. | Complete; committed | `65830c3a85a7928ddcabf28cb6615be2e28fa187` |
 | [0011: IMU and barometer](0011-imu-barometer-sensors.md) | Configurable sensor classes, typed observations and MCAP payloads. | Complete; committed | `84449a54c030f9393b41b8048bf31e9cd8caa381` |
@@ -35,7 +35,7 @@
 | [0033: LOS envelope errors](0033-los-envelope-errors.md) | Allow +/-35 degree azimuth and expose rejected bearing, limits and physics stop reasons in mission logs. | Complete; committed | `f6e5e302242388f337fee28aff70690f316d43c6` |
 | [0034: yaw target search](0034-yaw-target-search.md) | One measured yaw circle, candidate braking/settling and continuous LOS handoff at the new heading. | Complete; committed | `0861c8cfd6d0442773998500200092bd2660d87b` |
 | [0035: center target before LOS](0035-center-target-before-los.md) | Proportional yaw centers the bbox horizontally before settling and ending search. | Complete; committed | `fca7f74d8d8fbf6d74c537420d5e4ea8a44c49e5` |
-| [0036: single workspace task](0036-single-workspace-task.md) | Replace workspace and folder tasks with one four-service launch task. | Implemented; stub launch/cleanup verified | Pending |
+| [0036: single workspace task](0036-single-workspace-task.md) | Replace workspace and folder tasks with one four-service launch task. | Implemented; stub launch/cleanup verified | `8c47f8feecf28acc718d3dff57e24a779318b124` (workspace) |
 | [0037: sensor pose sources](0037-sensor-pose-sources.md) | YAML-selected barometer altitude and complementary-filter IMU attitude for camera/app. | Implemented; 2 unrelated legacy task-test failures | `7c6e86617a25fc300adfaa1a3116c225750f78fc` |
 | [0038: startup configuration banner](0038-startup-config-banner.md) | Print all resolved external-RC startup settings and source paths to stdout. | Implemented; 17 focused checks passed | `55562afcc05b73de4b76ab2cbe165de15b276806` |
 | [0039: barometer noise profile](0039-barometer-noise-profile.md) | Enable representative BMP388 pressure noise in the basic YAML profile. | Implemented; 95 focused checks passed | `ce54722cebbcea1ccac78eb70008de4b5e23c14f` |
@@ -52,5 +52,5 @@
 - [0049: Periodic render profile](0049-periodic-render-profile.md) — Implemented; focused publisher and adapter checks passed, implementation commit `53b96b1`.
 - [0050: Shared terrain heightmap and rangefinder](0050-terrain-heightmap-rangefinder.md) — Implemented and verified, implementation commits `6fb1bd5`, `a796b0d`.
 - [0051: Preflight terrain clearance](0051-spawn-terrain-clearance.md) — Implemented; focused tests passed, implementation commit `0f60657`.
-| [0052 Recorded file origins](0052-recorded-profile-origins.md) | Save source profile/config filenames and show only application parameters in FlightLens. | Implemented; verification passed | Pending |
-| [0053 Configurable rate P gains](0053-configurable-rate-p-gains.md) | Physics YAML roll/pitch/yaw rate gains and heavy-quad trial. | Implemented; 109 tests, build and controlled response check passed | Pending |
+| [0052 Recorded file origins](0052-recorded-profile-origins.md) | Save source profile/config filenames and show only application parameters in FlightLens. | Implemented; verification passed | `ef298d68646e69d828a97df85dceb7a7a29ef18d` |
+| [0053 Configurable rate P gains](0053-configurable-rate-p-gains.md) | Physics YAML roll/pitch/yaw rate gains and heavy-quad trial. | Implemented; 109 tests, build and controlled response check passed | `ef298d68646e69d828a97df85dceb7a7a29ef18d` |

@@ -22,7 +22,7 @@ Only `examples/altitude_hold` and its documentation. Keep constants in their
 owning modules; no new configuration layer, dependencies or behavior changes.
 
 ## Status
-Implemented and verified; uncommitted.
+Implemented and verified.
 
 Verification outcome:
 - `uv run --locked pytest -q`: 254 passed, 1 skipped (optional telemetry integration).
@@ -33,4 +33,8 @@ Verification outcome:
   and one-step arithmetic in function bodies; domain/tuning values are named.
 - GUI values were preserved; interactive GUI viewing was not repeated.
 
-Implementation commit hash: Pending (no commit requested).
+Implementation commit hash: `ef298d68646e69d828a97df85dceb7a7a29ef18d`.
+
+## Repository snapshot record
+Recorded snapshot: `ef298d68646e69d828a97df85dceb7a7a29ef18d` (bullet_drone repository). This is the new local
+baseline containing the current implementation, not a recovered historical commit.

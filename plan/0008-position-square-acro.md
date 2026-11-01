@@ -25,7 +25,7 @@ PID path, attitude bypass, waypoint/heading/landing and stopped motors. Test
 deadline, errors/interrupt cleanup and CLI/import safety. Run full suite and GUI.
 
 ## Status
-Implemented and verified; uncommitted.
+Implemented and verified.
 
 Verification outcome:
 - `uv run --locked pytest -q`: 264 passed, 1 skipped (optional telemetry integration).
@@ -43,4 +43,8 @@ Verification outcome:
 - README sequence/state diagrams and mode-composition docs added. Updated SVG
   rendered and visually inspected. Dependencies unchanged.
 
-Implementation commit hash: Pending (no commit requested).
+Implementation commit hash: `ef298d68646e69d828a97df85dceb7a7a29ef18d`.
+
+## Repository snapshot record
+Recorded snapshot: `ef298d68646e69d828a97df85dceb7a7a29ef18d` (bullet_drone repository). This is the new local
+baseline containing the current implementation, not a recovered historical commit.

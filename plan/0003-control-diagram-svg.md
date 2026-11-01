@@ -28,7 +28,7 @@ simulated IMU or camera/ADRC branches. No behavior or dependency changes.
 Earlier plan files are absent in this workspace; retain the agreed number 0003.
 
 ## Status
-Implemented and verified; uncommitted.
+Implemented and verified.
 
 Verification outcome: SVG XML parsed successfully; marker references and README
 link validated. Rendered in headless Chrome and visually inspected twice,
@@ -36,4 +36,8 @@ correcting connectors that crossed labels. All labels and feedback arrows are
 readable without clipping. Obsolete PNG removed; no PNG references remain.
 Application tests were not rerun because only documentation assets changed.
 
-Implementation commit hash: Pending (no commit requested; checkout has no `.git`).
+Implementation commit hash: `ef298d68646e69d828a97df85dceb7a7a29ef18d`.
+
+## Repository snapshot record
+Recorded snapshot: `ef298d68646e69d828a97df85dceb7a7a29ef18d` (bullet_drone repository). This is the new local
+baseline containing the current implementation, not a recovered historical commit.

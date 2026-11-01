@@ -15,4 +15,8 @@ with stub commands without starting graphics or recording a flight.
 Status: Implemented; JSON and Bash syntax checks passed. Stub checks verified
 all four launches, cleanup after service exit, and cleanup after task termination.
 Real graphics/flight launch was not run.
-Implementation commit: Pending.
+Implementation commit: `8c47f8feecf28acc718d3dff57e24a779318b124`.
+
+## Repository snapshot record
+Recorded snapshot: `8c47f8feecf28acc718d3dff57e24a779318b124` (workspace repository). This is the new local
+baseline containing the current implementation, not a recovered historical commit.

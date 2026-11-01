@@ -30,7 +30,7 @@ No replacement runner, new CLI, dependencies, commits or pushes. Preserve existi
 configuration loading, physics/controller coverage and optional adapters.
 
 ## Status
-Implemented and verified; uncommitted.
+Implemented and verified.
 
 Verification outcome:
 - `uv lock` refreshed metadata; `uv sync --locked` rebuilt the editable package
@@ -47,4 +47,8 @@ Verification outcome:
 - Rendering composition diagnostics now name library parameters rather than
   retired CLI flags. GUI flights were not repeated; example behavior is unchanged.
 
-Implementation commit hash: Pending (no commit requested).
+Implementation commit hash: `ef298d68646e69d828a97df85dceb7a7a29ef18d`.
+
+## Repository snapshot record
+Recorded snapshot: `ef298d68646e69d828a97df85dceb7a7a29ef18d` (bullet_drone repository). This is the new local
+baseline containing the current implementation, not a recovered historical commit.

@@ -38,7 +38,7 @@ deadline boundaries, failure/interruption cleanup and import/help safety. Run fu
 suite and inspect paced GUI and updated SVG.
 
 ## Status
-Implemented and verified; uncommitted.
+Implemented and verified.
 
 Verification outcome:
 - Full suite: `uv run --locked pytest -q` → 285 passed, 1 skipped (optional telemetry).
@@ -59,4 +59,8 @@ Verification outcome:
   of the removed combined controller interface.
 - Dependencies unchanged; optional telemetry integration not exercised.
 
-Implementation commit hash: Pending (no commit requested).
+Implementation commit hash: `ef298d68646e69d828a97df85dceb7a7a29ef18d`.
+
+## Repository snapshot record
+Recorded snapshot: `ef298d68646e69d828a97df85dceb7a7a29ef18d` (bullet_drone repository). This is the new local
+baseline containing the current implementation, not a recovered historical commit.
