@@ -55,4 +55,4 @@
 | [0052 Recorded file origins](0052-recorded-profile-origins.md) | Save source profile/config filenames and show only application parameters in FlightLens. | Implemented; verification passed | `ef298d68646e69d828a97df85dceb7a7a29ef18d` |
 | [0053 Configurable rate P gains](0053-configurable-rate-p-gains.md) | Physics YAML roll/pitch/yaw rate gains and heavy-quad trial. | Implemented; 109 tests, build and controlled response check passed | `ef298d68646e69d828a97df85dceb7a7a29ef18d` |
 
-- [0054: Mission collision gates](0054-mission-collision-gates.md) — Implemented; 50 tests passed; commit Pending.
+- [0054: Mission collision gates](0054-mission-collision-gates.md) — Implemented; 50 tests passed; commit `6f6d11e389ee00d8209c60236bcd1d6783bdc8cd`.
