@@ -69,3 +69,48 @@ def test_real_tcp_exact_collision_topic_and_control_order(tmp_path):
             assert scenario.result['reason'] == 'target_hit'
         finally:
             control.close()
+
+
+def test_manual_mission_and_liftoff_gates_and_delayed_reports():
+    scenario=ScenarioTermination(clock=lambda:1.1,mission_gated=True)
+    source=dict(physics_id='physics',episode_id='episode',stream_id='stream',step_index=2,
+        simulation_time_s=.1,measurement_us=1_000_000)
+    args=dict(controller_id='godot',running=True,controller_live=True)
+    packet=dict(schema_version=2,active=True,mission_started=False,channels=[1500]*18)
+    scenario.command(packet,3)
+    scenario.observe(source)
+    assert not scenario.accept(report(source),**args)
+    assert not scenario.terrain_collision(step=2,clearance_m=0.,contact=True)
+    scenario.command(dict(packet,mission_started=True),3)
+    scenario.observe(source)
+    assert not scenario.history
+    assert not scenario.terrain_collision(step=3,clearance_m=0.,contact=True)
+    final=dict(source,step_index=3,measurement_us=1_050_000)
+    scenario.observe(final)
+    assert not scenario.accept(report(source),**args)
+    assert scenario.accept(report(final),**args)  # target hit works before liftoff
+    assert not scenario.terrain_collision(step=4,clearance_m=.19,contact=False)
+    assert not scenario.terrain_collision(step=5,clearance_m=.2,contact=False)
+    assert scenario.terrain_enabled
+    assert scenario.terrain_collision(step=6,clearance_m=0.,contact=True)
+    scenario.stop_mission()
+    assert not scenario.terrain_enabled and scenario.mission_start_step is None
+    assert scenario.result is not None  # terminal publication survives gate cleanup
+    scenario.reset()
+    assert scenario.result is None
+
+
+def test_legacy_armed_command_and_invalid_clearance_do_not_bypass_liftoff():
+    scenario=ScenarioTermination(mission_gated=True)
+    packet=dict(schema_version=1,active=True,channels=[1500]*18)
+    scenario.command(dict(packet,active=False),2)
+    assert scenario.mission_start_step is None
+    scenario.command(packet,3)
+    assert scenario.mission_start_step==3
+    for clearance,contact in ((float('inf'),False),(float('nan'),False),(.5,True)):
+        assert not scenario.terrain_collision(step=3,clearance_m=clearance,contact=contact)
+    scenario.command(packet,8)
+    assert scenario.mission_start_step==3  # boundary does not move on heartbeat
+    scenario.stop_mission()
+    scenario.command(dict(schema_version=2,active=True,mission_started=False),10)
+    assert scenario.mission_start_step is None

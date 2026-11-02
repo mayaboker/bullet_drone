@@ -61,3 +61,32 @@ def test_real_tcp_exact_topic_and_malformed_bounds():
             assert lease.ready()
         finally:
             receiver.close()
+
+
+@pytest.mark.parametrize('hold_last', [False, True])
+def test_v2_mission_signal_obeys_owner_sequence_and_lease_expiry(hold_last):
+    from tools.zmq_render.scenario import ScenarioTermination
+    clock=[1.]
+    lease=FlightLease('physics',clock=lambda:clock[0],hold_last=hold_last)
+    assert lease.accept(packet(schema_version=2,mission_started=False),'episode')
+    lease.begin('new')
+    gate=ScenarioTermination(mission_gated=True)
+    idle=packet(schema_version=2,mission_started=False,active=True,episode_id='new')
+    idle['channels'][4]=2000
+    assert lease.accept(idle,'new') and lease.command() is not None
+    gate.command(lease.latest,10)
+    assert gate.mission_start_step is None
+    start=dict(idle,mission_started=True,sequence=2)
+    assert not lease.accept(dict(start,app_id='foreign'),'new')
+    gate.command(lease.latest,11)
+    assert gate.mission_start_step is None
+    assert lease.accept(start,'new')
+    gate.command(lease.latest,12)
+    assert gate.mission_start_step==12
+    clock[0]=1.2
+    assert (lease.command() is not None) == hold_last
+    assert lease.accept(dict(start,sequence=3,active=False,issued_us=1_200_000,valid_until_us=1_300_000),'new')
+    assert lease.command() is None  # withdrawal also stops the Betaflight hold-last lease
+    gate.stop_mission()
+    lease.end()
+    assert gate.mission_start_step is None and not gate.history

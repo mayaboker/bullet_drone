@@ -53,6 +53,8 @@ class SimulationControl:
 
     def transition(self, state, reason, observation):
         self.state, self.reason = state, reason
+        if state != 'running' and self.scenario is not None:
+            self.scenario.stop_mission()
         self.publish(observation, force=True)
 
     def publish(self, observation, *, force=False):
@@ -62,11 +64,14 @@ class SimulationControl:
             self.publisher.set_spawn(self.spawn.packet(self, observation))
         if force or now - self.last_state >= STATE_INTERVAL_S:
             state = observation.ground_truth
-            packet = dict(schema_version=2 if self.scenario is not None else 1, physics_id=self.physics_id,
+            gated = self.scenario is not None and self.scenario.mission_gated
+            packet = dict(schema_version=3 if gated else 2 if self.scenario is not None else 1, physics_id=self.physics_id,
                 controller_id=self.controller_id, episode_id=state.episode_id, state=self.state,
                 reason=self.reason, simulation_time_s=state.simulation_time_s)
             if self.scenario is not None:
                 packet['terminal_result'] = self.scenario.result
+            if gated:
+                packet['mission_start_step'] = self.scenario.mission_start_step if self.state == 'running' else None
             self.publisher.set_state(packet)
             self.last_state = now
 

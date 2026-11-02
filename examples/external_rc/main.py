@@ -108,7 +108,7 @@ def run(path, *, config_path=None, simulation_factory=RcSimulation):
     try:
         renderer.start()
         transport = load_transport(renderer.transport_path)
-        scenario = ScenarioTermination()
+        scenario = ScenarioTermination(mission_gated=True)
         wind = WindControl()
         control = SimulationControl(renderer.transport_path, renderer, scenario=scenario, spawn=SpawnSelection(config.drone.initial_position_m), wind=wind)
         lease = FlightLease(control.physics_id, hold_last=betaflight)
@@ -176,6 +176,8 @@ def run(path, *, config_path=None, simulation_factory=RcSimulation):
         start_time = first_deadline = time.monotonic()
         while True:
             receiver.poll(observation.ground_truth.episode_id)
+            if control.state != 'running' or lease.command() is None:
+                scenario.stop_mission()
             action = control.poll()
             if action == 'wind':
                 try:
@@ -281,6 +283,10 @@ def run(path, *, config_path=None, simulation_factory=RcSimulation):
                 lease.end()
                 publish()
                 continue
+            before_start = scenario.mission_start_step
+            scenario.command(lease.latest, observation.ground_truth.step_index + 1)
+            if scenario.mission_start_step != before_start:
+                control.publish(observation, force=True)
             if betaflight:
                 arm_channel = channels[config.rc.arm_channel - 1]
                 observation = (simulation.hold() if arm_channel < config.rc.arm_threshold
@@ -290,7 +296,9 @@ def run(path, *, config_path=None, simulation_factory=RcSimulation):
             applied_sequence = lease.sequence
             armed, mode = (False, 'angle') if betaflight else (simulation.last_command.armed, simulation.last_command.mode)
             publish(captured=True)
-            if armed and simulation.terrain_contact():
+            if (scenario.mission_start_step is not None and scenario.terrain_collision(
+                    step=observation.ground_truth.step_index,
+                    clearance_m=simulation.terrain_clearance_m(), contact=simulation.terrain_contact())):
                 lease.end()
                 control.transition('stopped', 'terrain_collision', observation)
                 publish()

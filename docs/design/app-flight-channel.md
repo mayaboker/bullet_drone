@@ -50,6 +50,32 @@ expired and reordered packets are rejected. A lease cannot change owner while
 running. Active=false withdraws the episode; expiry is checked before each step.
 Stop freezes the pose; it does not land or run a hidden position controller.
 
+## Mission collision gates
+
+RC version 2 adds `mission_started`: manual Arm leaves it false; explicit Start
+mission and the automatic takeoff transition set it true. The external runner
+uses only the current valid owner's command to latch the next physics step as
+the mission boundary. Legacy RC v1 retains automatic behavior: armed means
+mission start. `active` remains the lease/control signal and does not mean
+takeoff has started.
+
+Simulation state version 3 includes nullable `mission_start_step`, plus the
+existing terminal result. Until that boundary exists, target collisions cannot
+end an episode and no target-source history is retained. Godot rejects earlier
+or foreign-episode poses before they enter its sweep/latch; physics independently
+requires an eligible captured source. Godot drains poses and resets pending
+collision state while the gate is disabled. Legacy simulation states retain
+their original renderer behavior.
+
+Terrain contacts are physically simulated throughout idle/arming/takeoff. They
+become terminal crashes only after a post-start sample has at least 0.20 m
+geometry-based vehicle-to-terrain clearance and no contact. This gate then stays
+enabled until Stop/reset/spawn/owner or lease termination. Target hits are enabled
+immediately at mission start, including before terrain clearance. The rule is
+shared by internal and Betaflight simulation; it does not use the internal-only
+`armed` feedback variable. Ground-truth collision queries do not modify sensors.
+Both gate activations are logged. Takeoff and command watchdogs remain active.
+
 `flight/drone_1/config` advertises mass, gravity, thrust authority, RC scales and
 mapping, rates, camera calibration and `attitude_model=ideal` by default. With physics YAML
 `pose_sources.attitude: imu`, the model is `imu_complementary` and feedback uses
