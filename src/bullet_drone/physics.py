@@ -26,13 +26,16 @@ TERRAIN_CLEARANCE_RAY_RANGE_M = 1000.0
 BASE_LINK_INDEX = -1
 WORLD_Z_AXIS = 2
 ZERO_POSITION_M = (0.0, 0.0, 0.0)
+TRUCK_COLLISION_HALF_EXTENTS_M = (3.2, 1.2, 1.8)
+TRUCK_COLLISION_CENTER_M = (50.0, 0.0, 5.55)
 VECTOR_COMPONENTS = 3
 ROTOR_COUNT = 4
 
 
 class PyBulletPhysics:
     def __init__(self, config: SimulationConfig, vehicle: VehicleParameters | None = None, *,
-                 motor_dynamics: MotorDynamics | None = None, propeller_model: PropellerModel | None = None) -> None:
+                 motor_dynamics: MotorDynamics | None = None, propeller_model: PropellerModel | None = None,
+                 target_scene: bool = False) -> None:
         self._config = config
         self._vehicle = vehicle if vehicle is not None else load_vehicle_parameters(config.drone.urdf)
         self._motors = motor_dynamics if motor_dynamics is not None else IdealMotorDynamics(self._vehicle.max_speed_rad_s)
@@ -43,6 +46,8 @@ class PyBulletPhysics:
         self._client: int | None = None
         self._body: int | None = None
         self._terrain_body: int | None = None
+        self._target_scene = target_scene
+        self._target_body: int | None = None
         self._closed = False
         self._failed = False
         self._episode_id = ""
@@ -99,6 +104,13 @@ class PyBulletPhysics:
             for link in range(BASE_LINK_INDEX, p.getNumJoints(self._body, physicsClientId=client)):
                 p.setCollisionFilterGroupMask(self._body, link, DRONE_COLLISION_GROUP,
                                               ALL_COLLISION_GROUPS, physicsClientId=client)
+            if self._target_scene:
+                # The renderer's red truck is centred 50 m in front of spawn.
+                # Its shared heightmap puts the cargo base at z=3.75 m.
+                shape = p.createCollisionShape(p.GEOM_BOX, halfExtents=TRUCK_COLLISION_HALF_EXTENTS_M,
+                                               physicsClientId=client)
+                self._target_body = p.createMultiBody(baseMass=0, baseCollisionShapeIndex=shape,
+                    basePosition=TRUCK_COLLISION_CENTER_M, physicsClientId=client)
             nominal_mass, _, nominal_inertia, *_ = p.getDynamicsInfo(
                 self._body, -1, physicsClientId=client,
             )
@@ -151,6 +163,13 @@ class PyBulletPhysics:
         if self._terrain_body is None or self._body is None:
             return False
         return bool(self._p.getContactPoints(bodyA=self._body, bodyB=self._terrain_body,
+                                             physicsClientId=self._client))
+
+    def target_contact(self) -> bool:
+        """True only for a PyBullet drone/red-truck contact in the target scene."""
+        self._require_connection()
+        return bool(self._target_body is not None and self._body is not None and
+                    self._p.getContactPoints(bodyA=self._body, bodyB=self._target_body,
                                              physicsClientId=self._client))
 
     def terrain_clearance_m(self) -> float:

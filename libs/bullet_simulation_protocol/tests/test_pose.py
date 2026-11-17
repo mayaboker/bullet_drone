@@ -9,6 +9,13 @@ def test_pose_roundtrip():
     assert set(pose.to_dict()) == {'header', 'drone_id', 'position_m', 'orientation_xyzw'}
 
 
+def test_pose_preserves_host_measurement_time():
+    pose = PoseMessage(PoseHeader(240, TimeStamp(1, 0)), 'iris',
+                       (0., 0., 3.), (0., 0., 0., 1.), 123456789)
+    assert PoseMessage.from_dict(pose.to_dict()) == pose
+    assert pose.to_dict()['host_capture_ns'] == 123456789
+
+
 @pytest.mark.parametrize('field,value', [('position_m', [0., float('nan'), 0.]),
     ('orientation_xyzw', [0., 0., 0., 0.]), ('schema_version', 2), ('drone_id', '')])
 def test_pose_rejects_invalid_fields(field, value):

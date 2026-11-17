@@ -48,7 +48,7 @@ def _reject_constant(value):
 def validate_descriptor(metadata):
     required = {'version', 'session', 'slot', 'shm_name', 'width', 'height', 'encoding',
                 'step', 'bytes', 'sequence', 'capture_ns'}
-    if not isinstance(metadata, dict) or set(metadata) not in (required, required | {'source'}, required | {'header', 'drone_id'}):
+    if not isinstance(metadata, dict) or set(metadata) not in (required, required | {'source'}, required | {'header', 'drone_id'}, required | {'header', 'drone_id', 'host_capture_ns'}):
         raise ValueError('invalid image descriptor fields')
     for key in ('version', 'slot', 'width', 'height', 'step', 'bytes', 'sequence', 'capture_ns'):
         if type(metadata[key]) is not int:
@@ -66,11 +66,13 @@ def validate_descriptor(metadata):
         raise ValueError('invalid frame sequence or capture timestamp')
     if metadata['version'] == 3:
         from bullet_simulation_protocol.pose import PoseHeader
-        if set(metadata) != required | {'header', 'drone_id'}:
+        if set(metadata) not in (required | {'header', 'drone_id'}, required | {'header', 'drone_id', 'host_capture_ns'}):
             raise ValueError('version 3 requires pose header and drone ID')
         PoseHeader.from_dict(metadata['header'])
         if not isinstance(metadata['drone_id'], str) or not metadata['drone_id'].strip() or len(metadata['drone_id']) > 128:
             raise ValueError('invalid image drone ID')
+        if 'host_capture_ns' in metadata and (type(metadata['host_capture_ns']) is not int or metadata['host_capture_ns'] <= 0):
+            raise ValueError('invalid host capture timestamp')
     elif 'header' in metadata or 'drone_id' in metadata:
         raise ValueError('pose header requires descriptor version 3')
     if metadata['version'] == 2:

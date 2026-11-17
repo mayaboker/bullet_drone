@@ -43,7 +43,7 @@ def run(options):
                                                      GRAVITY_VECTOR_M_S2, gui=False),
                                   DroneSettings(1.0, INITIAL_POSITION_M),
                                   control=ControlSettings('betaflight' if options.sitl else 'internal'))
-        physics = PyBulletPhysics(config, vehicle)
+        physics = PyBulletPhysics(config, vehicle, target_scene=options.target_scene)
         resources.callback(physics.close)
         environment = DroneEnvironment(
             physics, imu=ImuSensor(GRAVITY_VECTOR_M_S2, config.sensors.imu, sample_period_s=TIMESTEP_S),
@@ -56,6 +56,7 @@ def run(options):
         if backend is not None:
             backend.reset(observation)
         ready = False
+        contact_published = False
         next_step = time.monotonic()
         while True:
             if options.sitl:
@@ -76,6 +77,9 @@ def run(options):
                 observation = environment.hold()
             if viewer:
                 viewer.consume(observation)
+                if options.target_scene and not contact_published and physics.target_contact():
+                    viewer.publisher.set_contact(observation.ground_truth)
+                    contact_published = True
 
 
 def main(argv: Sequence[str] | None = None) -> int:

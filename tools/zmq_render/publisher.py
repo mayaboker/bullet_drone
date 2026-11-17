@@ -6,12 +6,14 @@ from pathlib import Path
 from queue import Empty, Full, Queue
 from threading import Event, Thread, Lock
 from uuid import uuid4
+import time
 
 from loguru import logger
 from bullet_drone.config import ConfigurationError, PoseSources
 from bullet_drone.pose import resolve_pose
 from bullet_simulation_protocol.pose import PoseMessage, POSE_TOPIC
 from bullet_simulation_protocol.flight import FEEDBACK_TOPIC
+from bullet_simulation_protocol.scenario import TARGET_CONTACT_TOPIC
 from tools.zmq_render.feedback import from_observation
 from bullet_drone.rendering.config import CameraSettings, number
 
@@ -72,9 +74,11 @@ class RenderPublisher:
         self.next_capture = 0.0
         self.snapshot_lock = Lock()
         self.latest_pose = None
+        self.latest_host_capture_ns = None
         self.latest_observation = None
         self.observation_sequence = 0
         self.control_state = None
+        self.contact_event = None
         self.latest_source = None
         self.sequence = 0
         self.dropped = 0
@@ -97,16 +101,24 @@ class RenderPublisher:
         with self.snapshot_lock:
             self.control_state = {'state': 'running' if running else 'stopped'}
 
+    def set_contact(self, state):
+        with self.snapshot_lock:
+            self.contact_event = dict(schema_version=1, drone_id=state.drone_id,
+                target_id='red_truck', step_index=state.step_index,
+                simulation_time_s=state.simulation_time_s)
+
     def consume(self, observation, *, source=None):
         if self.thread is None or self.stop.is_set():
             raise RuntimeError('publisher is not running')
         if self.error:
             return  # Failure is logged by the worker; physics keeps running.
         state = resolve_pose(observation, self.pose_sources)
+        host_capture_ns = time.monotonic_ns()
         with self.snapshot_lock:
             self.latest_observation = observation
             self.observation_sequence += 1
             self.latest_pose = state
+            self.latest_host_capture_ns = host_capture_ns
             self.latest_source = source
         if state.episode_id != self.episode:
             self.episode = state.episode_id
@@ -114,7 +126,7 @@ class RenderPublisher:
         if state.simulation_time_s + SCHEDULE_TOLERANCE_S < self.next_capture:
             return
         self.next_capture = (int((state.simulation_time_s + SCHEDULE_TOLERANCE_S) * self.config['fps']) + 1) / self.config['fps']
-        item = (self.sequence, state, source)
+        item = (self.sequence, state, source, host_capture_ns)
         self.sequence += 1
         try:
             self.queue.put_nowait(item)
@@ -130,7 +142,6 @@ class RenderPublisher:
                 self.dropped += 1
 
     def _run(self):
-        import time
         try:
             from bullet_simulation_protocol import load_transport
             transport = load_transport(self.transport_path)
@@ -139,6 +150,7 @@ class RenderPublisher:
                 next_config = 0.0
                 next_profile = 0.0
                 next_idle_pose = 0.0
+                next_contact = 0.0
                 wire_sequence = 0
                 previous_state = None
                 feedback_sequence = -1
@@ -155,25 +167,32 @@ class RenderPublisher:
                     with self.snapshot_lock:
                         control_state = self.control_state
                         latest = self.latest_pose
+                        latest_host_capture_ns = self.latest_host_capture_ns
                         source = self.latest_source
                         observation = self.latest_observation
                         observation_sequence = self.observation_sequence
-                    if observation is not None and observation_sequence != feedback_sequence:
+                        contact_event = self.contact_event
+                    if contact_event is not None and time.monotonic() >= next_contact:
+                        io.publish(TARGET_CONTACT_TOPIC, contact_event)
+                        next_contact = time.monotonic() + 0.1
+                    if (observation is not None and observation_sequence != feedback_sequence
+                            and hasattr(observation, 'sensors')):
                         io.publish(FEEDBACK_TOPIC, from_observation(observation))
                         feedback_sequence = observation_sequence
                     now = time.monotonic()
                     changed = control_state != previous_state
                     previous_state = control_state
                     try:
-                        _, state, source = self.queue.get(timeout=WORKER_POLL_S)
+                        _, state, source, host_capture_ns = self.queue.get(timeout=WORKER_POLL_S)
                     except Empty:
                         if control_state is None or control_state['state'] == 'running' or latest is None or (not changed and now < next_idle_pose):
                             continue
                         state = latest
+                        host_capture_ns = latest_host_capture_ns
                         next_idle_pose = now + 1 / IDLE_POSE_REFRESH_HZ
                     sequence = wire_sequence
                     wire_sequence += 1
-                    io.publish(POSE_TOPIC, PoseMessage.from_state(state))
+                    io.publish(POSE_TOPIC, PoseMessage.from_state(state, host_capture_ns))
         except Exception as exc:
             self.error = f'ZeroMQ render publisher failed: {exc}'
             logger.error(self.error)

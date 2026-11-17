@@ -19,6 +19,7 @@ class Options:
     sitl_binary: Path = DEFAULT_SITL_BINARY
     render_config: Path = DEFAULT_RENDER_CONFIG
     renderer: Path = DEFAULT_RENDERER
+    target_scene: bool = False
 
 
 class CliParser:
@@ -30,8 +31,11 @@ class CliParser:
         @click.option('--render-config', type=click.Path(exists=True, dir_okay=False, path_type=Path),
                       default=DEFAULT_RENDER_CONFIG)
         @click.option('--renderer', type=click.Path(dir_okay=False, path_type=Path), default=DEFAULT_RENDERER)
-        def command(sitl, render, sitl_binary, render_config, renderer):
+        @click.option('--target-scene', is_flag=True, help='Enable the red-truck physics collider and contact event.')
+        def command(sitl, render, sitl_binary, render_config, renderer, target_scene):
             """Run a persistent PyBullet simulation with optional SITL and rendering."""
-            return Options(sitl, render, sitl_binary, render_config, renderer)
+            if target_scene and (not sitl or not render):
+                raise click.UsageError('--target-scene requires --sitl and --render')
+            return Options(sitl, render, sitl_binary, render_config, renderer, target_scene)
 
         return command.main(args=argv, prog_name='simulation-launcher', standalone_mode=False)

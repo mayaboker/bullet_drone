@@ -2,6 +2,67 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "Bullet: Run target mission stack",
+      "icon": { "id": "play", "color": "terminal.ansiGreen" },
+      "dependsOn": [
+        "Bullet target: Scene + SITL + renderer",
+        "Bullet target: Visual",
+        "Bullet target: App (target-hit)",
+        "Bullet target: View"
+      ],
+      "dependsOrder": "parallel",
+      "problemMatcher": [],
+      "detail": "Start the red-truck mission components in four separate terminals. Arm and Start from View."
+    },
+    {
+      "label": "Bullet target: Scene + SITL + renderer",
+      "type": "shell",
+      "command": "uv run --frozen --extra render --extra sitl --extra mavlink python -m examples.simulation_launcher.main --sitl --render --target-scene",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": { "__NV_PRIME_RENDER_OFFLOAD": "1", "__GLX_VENDOR_LIBRARY_NAME": "nvidia" }
+      },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "new", "clear": true }
+    },
+    {
+      "label": "Bullet target: Visual",
+      "type": "shell",
+      "command": "uv run --project ../bullet_visual --locked bullet-visual --config ../bullet_visual/config/zmq.yaml",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "new", "clear": true }
+    },
+    {
+      "label": "Bullet target: App (target-hit)",
+      "type": "shell",
+      "command": "bash tools/run_target_app.sh",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "new", "clear": true }
+    },
+    {
+      "label": "Bullet target: View",
+      "type": "shell",
+      "command": "uv run --project ../bullet_view --locked bullet-view",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "new", "clear": true }
+    },
+    {
+      "label": "Bullet: Run target scene (SITL + renderer + visual)",
+      "icon": { "id": "play", "color": "terminal.ansiGreen" },
+      "type": "shell",
+      "command": "bash tools/run_target_scene.sh",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": { "__NV_PRIME_RENDER_OFFLOAD": "1", "__GLX_VENDOR_LIBRARY_NAME": "nvidia" }
+      },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "detail": "Run the target-enabled PyBullet and Betaflight scenario, packaged renderer, and bullet_visual."
+    },
+    {
       "label": "Bullet: Run launcher (SITL + renderer)",
       "icon": {
         "id": "play",

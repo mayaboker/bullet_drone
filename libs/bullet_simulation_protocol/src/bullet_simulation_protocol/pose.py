@@ -33,6 +33,7 @@ class PoseMessage(DictionaryMessage):
     drone_id: str
     position_m: tuple[float, float, float]
     orientation_xyzw: tuple[float, float, float, float]
+    host_capture_ns: int | None = None
 
     def __post_init__(self):
         if not isinstance(self.header, PoseHeader) or not isinstance(self.drone_id, str) or not self.drone_id.strip() or len(self.drone_id) > 128:
@@ -42,16 +43,26 @@ class PoseMessage(DictionaryMessage):
                 raise ValueError('invalid pose vector')
         if abs(sum(x*x for x in self.orientation_xyzw)-1) > QUATERNION_TOLERANCE:
             raise ValueError('pose quaternion must be unit length')
+        if self.host_capture_ns is not None and (type(self.host_capture_ns) is not int or not 0 < self.host_capture_ns <= MAX_WIRE_INTEGER):
+            raise ValueError('invalid host capture time')
+
+    def to_dict(self):
+        value = super().to_dict()
+        if self.host_capture_ns is None:
+            value.pop('host_capture_ns')
+        return value
 
     @classmethod
     def from_dict(cls, value):
-        if not isinstance(value, dict) or set(value) != {'header', 'drone_id', 'position_m', 'orientation_xyzw'}:
+        if not isinstance(value, dict) or set(value) not in ({'header', 'drone_id', 'position_m', 'orientation_xyzw'},
+                {'header', 'drone_id', 'position_m', 'orientation_xyzw', 'host_capture_ns'}):
             raise ValueError('invalid pose fields')
         if not isinstance(value['position_m'], (list, tuple)) or not isinstance(value['orientation_xyzw'], (list, tuple)):
             raise ValueError('invalid pose vectors')
-        return cls(PoseHeader.from_dict(value['header']), value['drone_id'], tuple(value['position_m']), tuple(value['orientation_xyzw']))
+        return cls(PoseHeader.from_dict(value['header']), value['drone_id'], tuple(value['position_m']),
+                   tuple(value['orientation_xyzw']), value.get('host_capture_ns'))
 
     @classmethod
-    def from_state(cls, state):
+    def from_state(cls, state, host_capture_ns=None):
         return cls(PoseHeader(state.step_index, TimeStamp.from_seconds(state.simulation_time_s)),
-                   state.drone_id, state.position_m, state.orientation_xyzw)
+                   state.drone_id, state.position_m, state.orientation_xyzw, host_capture_ns)

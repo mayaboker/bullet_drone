@@ -89,6 +89,24 @@ viewer. The example owns its loop and cleanup; Ctrl+C releases resources.
 
 Start the external-controller launcher with `uv run --locked --all-packages --all-extras --all-groups python -m examples.simulation_launcher.main`. It starts one SITL and Godot by default; `--no-sitl` and `--no-render` disable either process. The SITL uses the MAVLink-enabled profile (UART2 TCP 5762) and leaves MSP TCP 5761 for a separate controller such as `bullet-app`.
 
+### Red-truck mission in VS Code
+
+Run **Bullet: Run target mission stack** from this project's tasks. It opens
+separate task terminals for the target-enabled simulation and SITL, Visual,
+`bullet-app --mode auto --mission target-hit`, and View. The App task waits for
+the SITL TCP listeners before connecting. In View, confirm **Mission:
+target-hit**, then press **Arm** and **Start target mission**. A fresh Visual
+result changes Start from **Waiting for live target detector** to **ready**.
+After takeoff and hover, **search** means the mission is looking for the
+truck; **center**, **settle**, or **los** means it received a nonempty target
+box. Visual's `no_target` count rises when it processes an image without
+detecting the truck.
+
+Stop any earlier launcher, Visual, App, and View tasks before starting the
+stack so their ports are available. The older **Bullet: Run target scene
+(SITL + renderer + visual)** task already starts Visual, so do not run it
+alongside the stack.
+
 ## Usage
 
 | Example | Description | Control backend |
@@ -401,4 +419,14 @@ see its [asset notes](src/bullet_drone/assets/racer/README.md) and
 [upstream license](src/bullet_drone/assets/racer/LICENSE.upstream).
 
 
+
+# Target-enabled launcher
+
+`python -m examples.simulation_launcher.main --target-scene` enables a static
+red-truck collision body aligned to the packaged Godot scene. On confirmed
+drone contact, the launcher publishes `simulation/drone_1/target_contact` on
+the existing renderer telemetry endpoint (default TCP 5555). Bullet App uses
+that event only; LOS guidance uses Betaflight MAVLink and `bullet_visual` bboxes.
+The workspace task **Bullet: Run target scene (SITL + renderer + visual)**
+starts the launcher and detector together.
 
