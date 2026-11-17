@@ -1,6 +1,7 @@
 """Supervise a persistent PyBullet loop and optional external processes."""
 from collections.abc import Sequence
 from contextlib import ExitStack
+from pathlib import Path
 import sys
 import time
 
@@ -22,12 +23,15 @@ from examples.terrain_following_bt.sitl import SitlSession
 RATE_HZ = 240
 TIMESTEP_S = 1 / RATE_HZ
 MAX_SIMULATION_STEPS = 2**31 - 1
+MAVLINK_PROFILE = Path(__file__).resolve().parents[2] / 'configs/betaflight-mavlink.config'
+MAVLINK_PORT = 5762
 
 
 def run(options):
     with ExitStack() as resources:
         if options.sitl:
-            sitl = resources.enter_context(SitlSession(options.sitl_binary, connect_msp=False))
+            sitl = resources.enter_context(SitlSession(options.sitl_binary, profile_path=MAVLINK_PROFILE,
+                                                     extra_ports=(MAVLINK_PORT,), connect_msp=False))
         viewer = None
         if options.render:
             from external_render.renderer import ExternalRenderer

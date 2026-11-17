@@ -87,7 +87,7 @@ uv run --locked python -m examples.altitude_hold.main --headless
 The drone takes off to 3 m, holds, then lands. Remove `--headless` for the PyBullet
 viewer. The example owns its loop and cleanup; Ctrl+C releases resources.
 
-Start the external-controller launcher with `uv run --locked --all-packages --all-extras --all-groups python -m examples.simulation_launcher.main`. It starts SITL and Godot by default; `--no-sitl` and `--no-render` disable either process. The launcher does not open MSP. Start the external controller separately.
+Start the external-controller launcher with `uv run --locked --all-packages --all-extras --all-groups python -m examples.simulation_launcher.main`. It starts one SITL and Godot by default; `--no-sitl` and `--no-render` disable either process. The SITL uses the MAVLink-enabled profile (UART2 TCP 5762) and leaves MSP TCP 5761 for a separate controller such as `bullet-app`.
 
 ## Usage
 
