@@ -1,0 +1,10 @@
+{
+  "telemetry_endpoint": "tcp://127.0.0.1:5555",
+  "image_endpoint": "tcp://127.0.0.1:5556",
+  "control_endpoint": "tcp://127.0.0.1:5557",
+  "request_endpoint": "tcp://127.0.0.1:5560",
+  "request_io": {
+    "request_timeout_s": 1,
+    "request_max_queue_age_s": 1
+  }
+}

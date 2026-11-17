@@ -1,0 +1,286 @@
+from dataclasses import replace
+import json
+import time
+from types import SimpleNamespace
+
+import pytest
+from jsonschema import validate
+
+from bullet_drone.config import ConfigurationError
+from bullet_drone.models import DroneState
+from tools.zmq_render.publisher import RenderPublisher
+
+
+def publisher(tmp_path, **metadata):
+    path = tmp_path / 'render.json'
+    path.write_text(json.dumps({'transport_config': 'transport.json', 'fps': 30,
+        'camera': {'width_px': 640, 'height_px': 480, 'fov_x_deg': 90}}))
+    return RenderPublisher(path, **metadata)
+
+
+def test_simulation_scheduling_bounded_queue_and_episode_reset(tmp_path):
+    output = publisher(tmp_path)
+    output.thread = SimpleNamespace()
+    state = DroneState('one', 0, 0, (0, 0, 3), (0, 0, 0, 1), (0, 0, 0), (0, 0, 0))
+    for step in range(241):
+        output.consume(SimpleNamespace(ground_truth=replace(state, step_index=step, simulation_time_s=step/240)))
+    assert output.sequence == 31
+    assert output.dropped == 30
+    assert output.queue.qsize() == 1
+    sequence, latest, source = output.queue.get_nowait()
+    assert source is None
+    assert sequence == 30 and latest.step_index == 240
+    output.consume(SimpleNamespace(ground_truth=replace(state, episode_id='two')))
+    assert output.queue.get_nowait()[1].episode_id == 'two'
+
+
+def test_invalid_render_settings_and_inactive_publisher(tmp_path):
+    output = publisher(tmp_path)
+    with pytest.raises(RuntimeError):
+        output.consume(None)
+    path = tmp_path/'render.json'
+    value = json.loads(path.read_text())
+    value['fps'] = 0
+    path.write_text(json.dumps(value))
+    with pytest.raises(ConfigurationError):
+        RenderPublisher(path)
+
+
+@pytest.mark.parametrize(('profile_name', 'backend'), [
+    ('iris', 'internal'), ('position_square_acro', 'betaflight'),
+])
+def test_render_profile_metadata_carries_active_profile_and_backend(tmp_path, profile_name, backend):
+    output = publisher(tmp_path, profile_name=profile_name, backend=backend)
+    assert output.profile['profile_name'] == profile_name
+    assert output.profile['backend'] == backend
+    assert output.profile['drone_model'] == 'racer'
+
+
+def test_worker_startup_failure_and_cleanup(tmp_path):
+    output = publisher(tmp_path)
+    with pytest.raises(RuntimeError, match='publisher failed'):
+        output.start()
+    assert not output.thread.is_alive()
+    output.close()
+
+
+@pytest.mark.parametrize('failure', [RuntimeError('flight failed'), KeyboardInterrupt(), None])
+def test_render_cli_automatically_starts_and_closes(monkeypatch, failure):
+    from unittest.mock import MagicMock, Mock
+    from examples.position_square import main, demo
+    viewer = MagicMock()
+    viewer.__enter__.return_value = viewer
+    factory = Mock(return_value=viewer)
+    monkeypatch.setattr('external_render.renderer.ExternalRenderer', factory)
+    initial, airborne = object(), object()
+    result = Mock()
+    result.observation.ground_truth.simulation_time_s = 50.
+    result.observation.ground_truth.position_m = (0., 0., .015)
+
+    def fly(**kwargs):
+        assert kwargs['gui'] is False and kwargs['pace'] is True
+        assert 'control' not in kwargs
+        kwargs['on_observation'](initial)
+        kwargs['on_observation'](airborne)
+        if failure is not None:
+            raise failure
+        return result
+
+    monkeypatch.setattr(demo, 'run_demo', fly)
+    expected = 130 if isinstance(failure, KeyboardInterrupt) else 1 if failure else 0
+    assert main.main([]) == expected
+    viewer.wait_ready.assert_called_once_with(initial)
+    viewer.set_running.assert_any_call(True)
+    viewer.consume.assert_any_call(airborne)
+    viewer.__exit__.assert_called_once()
+    if failure is None:
+        viewer.set_running.assert_any_call(False)
+
+
+def test_real_tcp_periodic_config_pose_and_binding_cleanup(tmp_path):
+    zmq = pytest.importorskip('zmq')
+    from uuid import uuid4
+    path = tmp_path/'render.json'
+    output = publisher(tmp_path)
+    profile = tcp_profile()
+    (tmp_path/'transport.json').write_text(json.dumps(profile))
+    with zmq.Context() as context, context.socket(zmq.SUB) as subscriber:
+        subscriber.setsockopt(zmq.LINGER, 0)
+        subscriber.setsockopt(zmq.SUBSCRIBE, b'render/drone_1/')
+        subscriber.setsockopt(zmq.SUBSCRIBE, b'camera/front/camera_info')
+        subscriber.connect(profile['telemetry_endpoint'])
+        output.start()
+        try:
+            profile_seen = False
+            deadline = time.monotonic() + 4
+            while True:
+                assert time.monotonic() < deadline
+                if not subscriber.poll(100):
+                    continue
+                topic, payload = subscriber.recv_multipart()
+                if topic == b'render/drone_1/profile':
+                    profile_seen = True
+                    assert json.loads(payload) == {'schema_version': 1, 'stream_id': output.stream,
+                                                   'profile_name': 'unknown', 'backend': 'internal', 'drone_model': 'racer'}
+                    continue
+                break
+            assert topic == b'camera/front/camera_info'
+            from bullet_simulation_protocol import schema_bytes
+            from bullet_simulation_protocol.camera_info import CameraInfoMessage
+            CameraInfoMessage.from_dict(json.loads(payload))
+            assert json.loads(payload)['camera_info']['width'] == 640
+            while subscriber.poll(0):
+                profile_topic, profile_payload = subscriber.recv_multipart()
+                assert profile_topic == b'render/drone_1/profile'
+                assert json.loads(profile_payload)['stream_id'] == output.stream
+            assert subscriber.poll(1500)
+            repeated_topic, repeated_payload = subscriber.recv_multipart()
+            assert repeated_topic == b'camera/front/camera_info'
+            assert subscriber.poll(1500)
+            repeated_topic, repeated_payload = subscriber.recv_multipart()
+            assert repeated_topic == b'render/drone_1/profile'
+            assert json.loads(repeated_payload)['stream_id'] == output.stream
+            state = DroneState('px4_iris', 0, 0, (0, 0, 3), (0, 0, 0, 1), (1.25, -2.5, 0.75), (0, 0, 0))
+            output.consume(SimpleNamespace(ground_truth=state))
+            assert subscriber.poll(2000)
+            topic, payload = subscriber.recv_multipart()
+            packet = json.loads(payload)
+            from bullet_simulation_protocol.pose import PoseMessage
+            PoseMessage.from_dict(packet)
+            assert topic == b'render/drone_1/pose'
+            assert packet['drone_id'] == state.drone_id
+            assert packet['header']['fid'] == 0 and packet['position_m'] == [0, 0, 3]
+            output.set_running(False)
+            deadline = time.monotonic() + 3
+            while True:
+                assert time.monotonic() < deadline, 'held pose did not arrive'
+                assert subscriber.poll(1000)
+                held_topic, held_payload = subscriber.recv_multipart()
+                if held_topic == b'render/drone_1/pose':
+                    held = json.loads(held_payload)
+                    PoseMessage.from_dict(held)
+                    assert held['header'] == packet['header']
+                    break
+            collision = RenderPublisher(path)
+            with pytest.raises(RuntimeError, match='Address already in use'):
+                collision.start()
+            collision.close()
+        finally:
+            output.close()
+        assert not output.thread.is_alive()
+        restarted = RenderPublisher(path)
+        restarted.start()
+        restarted.close()
+        assert not restarted.thread.is_alive()
+
+
+def tcp_profile():
+    import socket
+    with socket.socket() as telemetry, socket.socket() as images, socket.socket() as control:
+        telemetry.bind(('127.0.0.1', 0))
+        images.bind(('127.0.0.1', 0))
+        control.bind(('127.0.0.1', 0))
+        return {'telemetry_endpoint': f'tcp://127.0.0.1:{telemetry.getsockname()[1]}',
+                'image_endpoint': f'tcp://127.0.0.1:{images.getsockname()[1]}',
+                'control_endpoint': f'tcp://127.0.0.1:{control.getsockname()[1]}'}
+
+
+def test_sensor_pose_and_stopped_republication_keep_measurements(tmp_path, config):
+    import time
+    import zmq
+    from bullet_drone.config import ImuSettings, PoseSources, SensorsSettings, BarometerSettings
+    from bullet_drone.pose import resolve_pose
+    from bullet_drone.simulation import RcSimulation
+    from bullet_drone.commands import RcInput
+    from examples.position_square.demo import FLIGHT_CONTROL_SETTINGS
+
+    sources = PoseSources('barometer', 'imu')
+    config = replace(config, pose_sources=sources,
+                     sensors=SensorsSettings(ImuSettings(gyro_bias_rad_s=(.1, .1, .1)),
+                                             BarometerSettings(pressure_bias_pa=5.)))
+    output = publisher(tmp_path)
+    output.pose_sources = sources
+    (tmp_path/'transport.json').write_text(json.dumps(tcp_profile()))
+    simulation = RcSimulation(config, FLIGHT_CONTROL_SETTINGS)
+    with zmq.Context() as context, context.socket(zmq.SUB) as subscriber:
+        subscriber.setsockopt(zmq.LINGER, 0)
+        subscriber.setsockopt(zmq.SUBSCRIBE, b'render/drone_1/')
+        subscriber.setsockopt(zmq.SUBSCRIBE, b'camera/front/camera_info')
+        subscriber.connect(json.loads((tmp_path/'transport.json').read_text())['telemetry_endpoint'])
+        output.start()
+        try:
+            assert subscriber.poll(4000)  # Wait for subscription before submitting a capture.
+            subscriber.recv_multipart()
+            simulation.reset()
+            observation = simulation.step(RcInput())
+            expected = resolve_pose(observation, sources)
+            source = dict(physics_id='physics', episode_id=expected.episode_id, stream_id=output.stream,
+                          step_index=expected.step_index, simulation_time_s=expected.simulation_time_s,
+                          measurement_us=time.monotonic_ns() // 1000)
+            output.set_running(False)
+            output.consume(observation, source=source)
+            poses = []
+            deadline = time.monotonic() + 4
+            while len(poses) < 2 and time.monotonic() < deadline:
+                if subscriber.poll(100):
+                    topic, payload = subscriber.recv_multipart()
+                    if topic == b'render/drone_1/pose':
+                        poses.append(json.loads(payload))
+            assert len(poses) == 2 and output.error is None
+            assert poses[1]['header'] == poses[0]['header']
+            for pose in poses:
+                assert pose['position_m'] == list(expected.position_m)
+                assert pose['position_m'][:2] == list(observation.ground_truth.position_m[:2])
+                assert pose['position_m'][2] == observation.sensors.barometer.altitude_m
+                assert pose['orientation_xyzw'] == list(expected.orientation_xyzw)
+                assert pose['header']['fid'] == observation.ground_truth.step_index
+            assert expected.position_m != observation.ground_truth.position_m
+            assert expected.orientation_xyzw != observation.ground_truth.orientation_xyzw
+        finally:
+            output.close()
+            simulation.close()
+
+
+def test_camera_info_publication_rates_are_configurable(tmp_path):
+    output = publisher(tmp_path)
+    path = tmp_path/'render.json'
+    value = json.loads(path.read_text())
+    value['publish_rates_hz'] = {'camera_info': 5, 'profile': 2}
+    path.write_text(json.dumps(value))
+    configured = RenderPublisher(path)
+    assert configured.rates == {'camera_info': 5, 'profile': 2}
+    assert configured.config['fps'] == 30
+    for rates in ({'camera_info':0}, {'unknown':1}, {'camera_info':float('nan')}):
+        value['publish_rates_hz'] = rates
+        path.write_text(json.dumps(value))
+        with pytest.raises((ValueError, ConfigurationError)):
+            RenderPublisher(path)
+
+
+def test_camera_info_rate_does_not_change_pose_capture_rate(tmp_path):
+    import zmq
+    output = publisher(tmp_path)
+    path = tmp_path/'render.json'
+    profile = tcp_profile()
+    (tmp_path/'transport.json').write_text(json.dumps(profile))
+    settings = json.loads(path.read_text())
+    settings['publish_rates_hz'] = {'camera_info': 10}
+    path.write_text(json.dumps(settings))
+    output = RenderPublisher(path)
+    with zmq.Context() as ctx, ctx.socket(zmq.SUB) as sub:
+        sub.setsockopt(zmq.LINGER, 0)
+        sub.setsockopt(zmq.SUBSCRIBE, b'camera/front/camera_info')
+        sub.connect(profile['telemetry_endpoint'])
+        output.start()
+        try:
+            stamps=[]
+            deadline=time.monotonic()+3
+            while len(stamps)<4 and time.monotonic()<deadline:
+                if sub.poll(100):
+                    _, raw=sub.recv_multipart()
+                    assert json.loads(raw)['capture_fps_hz']==30
+                    stamps.append(time.monotonic())
+            assert len(stamps)==4
+            assert .15 < stamps[-1]-stamps[0] < 1
+        finally:
+            output.close()
