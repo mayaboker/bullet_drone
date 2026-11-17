@@ -15,6 +15,15 @@ from bullet_drone.physics import PyBulletPhysics
 from bullet_drone.vehicle import VehicleParameters, load_racer_parameters
 
 
+def _make_physics(backend: str, config, vehicle, *, motor_dynamics=None, propeller_model=None):
+    if backend == 'pybullet':
+        return PyBulletPhysics(config, vehicle, motor_dynamics=motor_dynamics, propeller_model=propeller_model)
+    if backend == 'isaac':
+        from bullet_drone.isaac_physics import IsaacPhysics
+        return IsaacPhysics(config, vehicle, motor_dynamics=motor_dynamics, propeller_model=propeller_model)
+    raise ValueError(f"Unknown physics backend: {backend!r}. Use 'pybullet' or 'isaac'.")
+
+
 class RcSimulation:
     """Own RC translation, stabilization and physics, but no run loop.
 
@@ -27,6 +36,7 @@ class RcSimulation:
 
     def __init__(self, config: SimulationConfig, control_settings: InternalControlSettings,
                  vehicle: VehicleParameters | None = None, *,
+                 physics_backend: str = 'pybullet',
                  stabilization: StabilizationController | None = None,
                  motor_dynamics: MotorDynamics | None = None,
                  propeller_model: PropellerModel | None = None) -> None:
@@ -40,7 +50,7 @@ class RcSimulation:
             stabilization if stabilization is not None else InternalFlightController(control_settings),
             IdealStateFeedback(), MotorMixer(vehicle), self._timestep_s,
         )
-        self._physics = PyBulletPhysics(config, vehicle, motor_dynamics=motor_dynamics, propeller_model=propeller_model)
+        self._physics = _make_physics(physics_backend, config, vehicle, motor_dynamics=motor_dynamics, propeller_model=propeller_model)
         self._environment = DroneEnvironment(self._physics, imu=(ImuSensor(config.simulation.gravity_m_s2, config.sensors.imu, sample_period_s=self._timestep_s)
                 if config.sensors.imu.enabled else None),
             barometer=(BarometerSensor(config.sensors.barometer)

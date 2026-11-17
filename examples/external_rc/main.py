@@ -40,8 +40,9 @@ class CliParser:
         @click.command()
         @click.option('--render-config', default=DEFAULT_RENDER_CONFIG, type=click.Path(exists=True, path_type=Path))
         @click.option('--config', type=click.Path(exists=True, path_type=Path), help='Physics YAML, including sensor noise and pose sources.')
-        def command(render_config, config):
-            return render_config, config
+        @click.option('--physics-backend', default='pybullet', type=click.Choice(['pybullet', 'isaac']), help='Physics engine backend.')
+        def command(render_config, config, physics_backend):
+            return render_config, config, physics_backend
         return command.main(args=argv, prog_name='external-rc', standalone_mode=False)
 
 
@@ -53,7 +54,7 @@ def _close_spawn_simulation(simulation):
         logger.exception('Could not close retired spawn simulation')
 
 
-def run(path, *, config_path=None, simulation_factory=RcSimulation):
+def run(path, *, config_path=None, physics_backend='pybullet', simulation_factory=RcSimulation):
     config = (YamlConfigLoader().load(config_path) if config_path is not None else
               SimulationConfig(SimulationSettings(1 / PHYSICS_HZ, MAX_EPISODE_STEPS, (0., 0., -GRAVITY_M_S2), gui=False),
                                DroneSettings(MASS_KG, INITIAL_POSITION_M)))
@@ -100,7 +101,7 @@ def run(path, *, config_path=None, simulation_factory=RcSimulation):
                                              flight_control=asdict(FLIGHT_CONTROL_SETTINGS), render=renderer.config,
                                              transport=transport), source_revisions)
         configure_analysis()
-        simulation = simulation_factory(config, FLIGHT_CONTROL_SETTINGS, vehicle)
+        simulation = simulation_factory(config, FLIGHT_CONTROL_SETTINGS, vehicle, physics_backend=physics_backend)
         observation = simulation.reset()
         applied_sequence = 0
         armed, mode = False, 'angle'
@@ -146,7 +147,7 @@ def run(path, *, config_path=None, simulation_factory=RcSimulation):
                 try:
                     request = control.spawn.pending
                     candidate_config = replace(config, drone=replace(config.drone, initial_position_m=tuple(request['position_m'])))
-                    candidate = simulation_factory(candidate_config, FLIGHT_CONTROL_SETTINGS, vehicle)
+                    candidate = simulation_factory(candidate_config, FLIGHT_CONTROL_SETTINGS, vehicle, physics_backend=physics_backend)
                     candidate_observation = candidate.reset()
                 except Exception:
                     logger.exception('Spawn initialization failed; retaining previous simulation')
@@ -180,7 +181,13 @@ def run(path, *, config_path=None, simulation_factory=RcSimulation):
                     applied_sequence, armed, mode = 0, False, 'angle'
                     if can_start:
                         lease.candidate = owner_packet
-                        lease.begin(observation.ground_truth.episode_id)
+                        lease.owner = owner_packet['app_id']
+                        lease.episode_id = observation.ground_truth.episode_id
+                        lease.sequence = 0
+                        lease.latest = None
+                        lease.running = True
+                        lease.withdrawn = False
+                        lease.reason = 'waiting_first_command'
                     control.transition('running' if can_start else 'stopped', 'started' if can_start else 'reset', observation)
                     start_time = time.monotonic()
                     first_deadline = start_time + FIRST_COMMAND_TIMEOUT_S
@@ -232,8 +239,8 @@ def main(argv=None):
         options = CliParser().parse(argv)
         if isinstance(options, int):
             return options
-        path, config_path = options
-        run(path, config_path=config_path)
+        path, config_path, physics_backend = options
+        run(path, config_path=config_path, physics_backend=physics_backend)
     except KeyboardInterrupt:
         return 130
     except Exception:
