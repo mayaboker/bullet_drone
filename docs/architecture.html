@@ -432,6 +432,91 @@
     fill: var(--flow-arrow);
   }
 
+  /* Thread swim lanes */
+  .thread-lane {
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .thread-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .thread-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 0.78rem;
+  }
+  .thread-rate {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 0.68rem;
+    padding: 1px 8px;
+    border-radius: 12px;
+  }
+  .thread-src {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.62rem;
+    color: var(--fg-muted);
+  }
+  .thread-pipeline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+  }
+  .thread-pipeline .tp-step {
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    white-space: nowrap;
+  }
+  .thread-pipeline .tp-arrow { color: var(--flow-arrow); }
+  .thread-pipeline .tp-sleep {
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1.5px dashed var(--border);
+    color: var(--accent-recorder);
+    font-weight: 600;
+  }
+  .thread-desc {
+    font-size: 0.72rem;
+    color: var(--fg-muted);
+  }
+  .t-vision { background: #f5f3ff; border: 1.5px solid #7c3aed; }
+  .t-vision .thread-name { color: #7c3aed; }
+  .t-vision .thread-rate { background: #7c3aed; color: #f5f3ff; }
+  .t-control { background: var(--accent-app-bg); border: 1.5px solid var(--accent-app); }
+  .t-control .thread-name { color: var(--accent-app); }
+  .t-control .thread-rate { background: var(--accent-app); color: var(--accent-app-bg); }
+  .t-main { background: var(--code-bg); border: 1.5px solid var(--fg-muted); }
+  .t-main .thread-name { color: var(--fg-muted); }
+  .t-main .thread-rate { background: var(--fg-muted); color: var(--code-bg); }
+  .thread-link {
+    text-align: center;
+    font-size: 0.68rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--fg-muted);
+    padding: 2px 0;
+  }
+  .thread-link .shared-var { font-weight: 600; color: var(--accent-recorder); }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .t-vision { background: #2e1065; border-color: #a78bfa; }
+    :root:not([data-theme="light"]) .t-vision .thread-name { color: #a78bfa; }
+    :root:not([data-theme="light"]) .t-vision .thread-rate { background: #a78bfa; color: #2e1065; }
+  }
+  :root[data-theme="dark"] .t-vision { background: #2e1065; border-color: #a78bfa; }
+  :root[data-theme="dark"] .t-vision .thread-name { color: #a78bfa; }
+  :root[data-theme="dark"] .t-vision .thread-rate { background: #a78bfa; color: #2e1065; }
+
   @media (max-width: 600px) {
     .flow { gap: 4px; }
     .flow-box { font-size: 0.65rem; padding: 4px 7px; }
@@ -580,6 +665,82 @@
   <em>LOS Tracking</em> decides <strong>how</strong> to fly toward the target (bearing estimation, proportional navigation, control law).
   <em>Physical Simulation</em> turns RC commands into <strong>forces</strong> (flight controller, motor mix, rigid-body dynamics).
   <em>Rendering Engine</em> turns drone state into <strong>pixels</strong> (USD scene, RTX camera, shared-memory frames).
+</div>
+
+<!-- ═══════ MISSION APP THREADING ═══════ -->
+<h2>Process 3 threading <span style="font-weight:400; color:var(--fg-muted); font-size:0.85em;">(bullet_app with --mission-config)</span></h2>
+<p style="font-size:0.82rem; color:var(--fg-muted); margin:-8px 0 14px;">Three threads, three rates. Vision feeds control, control feeds physics. Main thread is display only.</p>
+
+<div style="display:flex; flex-direction:column; gap:0; margin:16px 0 24px;">
+  <!-- Vision thread -->
+  <div class="thread-lane t-vision">
+    <div class="thread-header">
+      <span class="thread-name">Vision thread</span>
+      <span class="thread-rate">~500 Hz</span>
+      <span class="thread-src">runtime.py:54 &middot; _vision()</span>
+    </div>
+    <div class="thread-pipeline">
+      <span class="tp-step">receiver.poll()</span>
+      <span class="tp-arrow">&rarr;</span>
+      <span class="tp-step">detect_red_box()</span>
+      <span class="tp-arrow">&rarr;</span>
+      <span class="tp-step" style="font-weight:600;">latest_vision = (meta, bbox)</span>
+      <span class="tp-arrow">&rarr;</span>
+      <span class="tp-sleep">wait(0.002) if idle</span>
+    </div>
+    <div class="thread-desc">Polls ZMQ non-blocking. Runs HSV detection on every new frame. Writes result under lock.</div>
+  </div>
+
+  <!-- Link: vision → control -->
+  <div class="thread-link">&darr; <span class="shared-var">self.latest_vision</span> under <code style="font-size:0.65rem;">threading.Lock</code> &darr;</div>
+
+  <!-- Control thread -->
+  <div class="thread-lane t-control">
+    <div class="thread-header">
+      <span class="thread-name">Control thread</span>
+      <span class="thread-rate">100 Hz fixed</span>
+      <span class="thread-src">runtime.py:71 &middot; _control() &middot; COMMAND_PERIOD_S = 0.01</span>
+    </div>
+    <div class="thread-pipeline">
+      <span class="tp-step">recv feedback :5555</span>
+      <span class="tp-arrow">&rarr;</span>
+      <span class="tp-step">read latest_vision</span>
+      <span class="tp-arrow">&rarr;</span>
+      <span class="tp-step" style="font-weight:700; border-color:var(--accent-app);">mission.tick()</span>
+      <span class="tp-arrow">&rarr;</span>
+      <span class="tp-step">send RC :5559</span>
+      <span class="tp-arrow">&rarr;</span>
+      <span class="tp-sleep">wait(remaining)</span>
+    </div>
+    <div class="thread-desc">Fixed 100 Hz timer. Runs Mission FSM + LOS navigator each tick. Publishes RC channels to physics. This is the heartbeat.</div>
+  </div>
+
+  <!-- Link: control → main -->
+  <div class="thread-link">&darr; <span class="shared-var">self.status</span> + <span class="shared-var">self.display</span> under same lock &darr;</div>
+
+  <!-- Main thread -->
+  <div class="thread-lane t-main">
+    <div class="thread-header">
+      <span class="thread-name">Main thread</span>
+      <span class="thread-rate">~20 Hz</span>
+      <span class="thread-src">runtime.py:194 &middot; run_mission()</span>
+    </div>
+    <div class="thread-pipeline">
+      <span class="tp-step">read status</span>
+      <span class="tp-arrow">&rarr;</span>
+      <span class="tp-step">print() / cv2.imshow()</span>
+      <span class="tp-arrow">&rarr;</span>
+      <span class="tp-sleep">wait(0.05)</span>
+    </div>
+    <div class="thread-desc">Display only &mdash; no detection, no control. Console output at ~20 Hz, or OpenCV window at ~100 fps with --debug.</div>
+  </div>
+</div>
+
+<div style="padding:10px 16px; border-radius:8px; background:var(--surface); border:1px solid var(--border); font-size:0.75rem; margin-bottom:32px; line-height:1.7;">
+  <strong>Why separate?</strong>
+  Vision is decoupled so the control loop never waits for a frame &mdash; it reads the latest available bbox each tick.
+  The control thread runs at a fixed 100 Hz matching <code>COMMAND_HZ</code> in physics, because the PID controllers and &alpha;-&beta; estimators need a steady dt.
+  The main thread stays slow because it only serves the human watching the terminal.
 </div>
 
 <!-- ═══════ PROCESS 1: PHYSICS ═══════ -->
