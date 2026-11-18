@@ -1,0 +1,919 @@
+<title>Bullet Drone Architecture</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  /* Layout: single-column technical diagram, process boxes with internal flow */
+  :root {
+    --bg: #fafaf9;
+    --fg: #1c1917;
+    --fg-muted: #78716c;
+    --surface: #ffffff;
+    --border: #d6d3d1;
+    --border-light: #e7e5e4;
+    --accent-physics: #2563eb;
+    --accent-physics-bg: #eff6ff;
+    --accent-render: #7c3aed;
+    --accent-render-bg: #f5f3ff;
+    --accent-app: #059669;
+    --accent-app-bg: #ecfdf5;
+    --accent-recorder: #d97706;
+    --accent-recorder-bg: #fffbeb;
+    --zmq: #dc2626;
+    --zmq-bg: #fef2f2;
+    --flow-arrow: #a8a29e;
+    --code-bg: #f5f5f4;
+    --highlight: #fef3c7;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0c0a09;
+      --fg: #e7e5e4;
+      --fg-muted: #a8a29e;
+      --surface: #1c1917;
+      --border: #44403c;
+      --border-light: #292524;
+      --accent-physics: #60a5fa;
+      --accent-physics-bg: #172554;
+      --accent-render: #a78bfa;
+      --accent-render-bg: #2e1065;
+      --accent-app: #34d399;
+      --accent-app-bg: #022c22;
+      --accent-recorder: #fbbf24;
+      --accent-recorder-bg: #451a03;
+      --zmq: #f87171;
+      --zmq-bg: #450a0a;
+      --code-bg: #292524;
+      --highlight: #422006;
+      --flow-arrow: #57534e;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0c0a09;
+    --fg: #e7e5e4;
+    --fg-muted: #a8a29e;
+    --surface: #1c1917;
+    --border: #44403c;
+    --border-light: #292524;
+    --accent-physics: #60a5fa;
+    --accent-physics-bg: #172554;
+    --accent-render: #a78bfa;
+    --accent-render-bg: #2e1065;
+    --accent-app: #34d399;
+    --accent-app-bg: #022c22;
+    --accent-recorder: #fbbf24;
+    --accent-recorder-bg: #451a03;
+    --zmq: #f87171;
+    --zmq-bg: #450a0a;
+    --code-bg: #292524;
+    --highlight: #422006;
+    --flow-arrow: #57534e;
+    color-scheme: dark;
+  }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 24px;
+    max-width: 900px;
+    margin: 0 auto;
+    line-height: 1.5;
+  }
+  h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0 0 4px;
+    text-wrap: balance;
+  }
+  h1 span {
+    font-weight: 400;
+    color: var(--fg-muted);
+    font-size: 0.85em;
+  }
+  .subtitle {
+    color: var(--fg-muted);
+    font-size: 0.85rem;
+    margin: 0 0 32px;
+  }
+  h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 40px 0 16px;
+    text-wrap: balance;
+  }
+
+  /* Process boxes */
+  .process {
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    padding: 20px;
+    margin-bottom: 20px;
+    position: relative;
+  }
+  .process-header {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .process-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  .process-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .process-desc {
+    font-size: 0.8rem;
+    color: var(--fg-muted);
+  }
+  .p-physics .process-label { color: var(--accent-physics); background: var(--accent-physics-bg); }
+  .p-render .process-label { color: var(--accent-render); background: var(--accent-render-bg); }
+  .p-app .process-label { color: var(--accent-app); background: var(--accent-app-bg); }
+  .p-recorder .process-label { color: var(--accent-recorder); background: var(--accent-recorder-bg); }
+  .p-physics { border-color: var(--accent-physics); border-width: 2px; }
+
+  /* Internal flow diagram */
+  .flow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    margin: 10px 0;
+  }
+  .flow-box {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--code-bg);
+    white-space: nowrap;
+    min-width: 0;
+  }
+  .flow-box.highlight {
+    background: var(--highlight);
+    border-color: var(--accent-recorder);
+  }
+  .flow-arrow {
+    color: var(--flow-arrow);
+    font-size: 0.85rem;
+    flex-shrink: 0;
+  }
+  .flow-label {
+    font-size: 0.7rem;
+    color: var(--fg-muted);
+    display: block;
+    margin-top: 2px;
+  }
+  .flow-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 0;
+  }
+
+  /* ZMQ transport table */
+  .transport {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    margin: 12px 0;
+  }
+  .transport th {
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--fg-muted);
+    padding: 6px 10px;
+    border-bottom: 1.5px solid var(--border);
+  }
+  .transport td {
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border-light);
+    vertical-align: top;
+  }
+  .transport .port {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    color: var(--zmq);
+  }
+  .transport .dir {
+    font-size: 0.72rem;
+    color: var(--fg-muted);
+  }
+
+  /* Swap indicator */
+  .swap-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: var(--accent-physics-bg);
+    color: var(--accent-physics);
+    border: 1px solid var(--accent-physics);
+    margin: 8px 0;
+  }
+
+  /* Section dividers */
+  .section-line {
+    border: none;
+    border-top: 1px solid var(--border-light);
+    margin: 12px 0;
+  }
+
+  /* Subsection inside process */
+  .subsection-title {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--fg-muted);
+    margin: 14px 0 6px;
+  }
+
+  /* Controller cascade */
+  .cascade {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin: 10px 0;
+  }
+  .cascade-step {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    min-width: 0;
+  }
+  .cascade-line {
+    width: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .cascade-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent-physics);
+    flex-shrink: 0;
+    margin-top: 10px;
+  }
+  .cascade-connector {
+    width: 2px;
+    flex: 1;
+    background: var(--border);
+  }
+  .cascade-content {
+    padding: 6px 12px;
+    min-width: 0;
+  }
+  .cascade-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    font-size: 0.78rem;
+  }
+  .cascade-detail {
+    font-size: 0.75rem;
+    color: var(--fg-muted);
+    margin-top: 1px;
+  }
+
+  /* Overview grid */
+  .overview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin: 16px 0;
+  }
+  .overview-card {
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .overview-card .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.3rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .overview-card .label {
+    font-size: 0.75rem;
+    color: var(--fg-muted);
+    margin-top: 2px;
+  }
+
+  /* Domain diagram */
+  .domains {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 0;
+    margin: 24px 0;
+    position: relative;
+  }
+  .domain {
+    padding: 18px 16px;
+    border-radius: 12px;
+    position: relative;
+  }
+  .domain-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 0.85rem;
+    margin-bottom: 4px;
+  }
+  .domain-pkg {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    opacity: 0.7;
+    margin-bottom: 8px;
+  }
+  .domain-items {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: 0.75rem;
+    line-height: 1.6;
+  }
+  .domain-items li::before {
+    content: '·';
+    margin-right: 6px;
+    opacity: 0.5;
+  }
+  .d-physics {
+    background: var(--accent-physics-bg);
+    border: 2px solid var(--accent-physics);
+    grid-column: 1;
+    grid-row: 1;
+    margin: 0 6px 6px 0;
+  }
+  .d-physics .domain-name { color: var(--accent-physics); }
+  .d-render {
+    background: var(--accent-render-bg);
+    border: 2px solid var(--accent-render);
+    grid-column: 2;
+    grid-row: 1;
+    margin: 0 0 6px 6px;
+  }
+  .d-render .domain-name { color: var(--accent-render); }
+  .d-mission {
+    background: var(--accent-app-bg);
+    border: 2px solid var(--accent-app);
+    grid-column: 2;
+    grid-row: 2;
+    margin: 6px 0 6px 6px;
+  }
+  .d-mission .domain-name { color: var(--accent-app); }
+  .d-los {
+    background: var(--accent-recorder-bg);
+    border: 2px solid var(--accent-recorder);
+    grid-column: 1 / -1;
+    grid-row: 3;
+    margin: 6px 0 0 0;
+  }
+  .d-los .domain-name { color: var(--accent-recorder); }
+  /* Arrows between domains */
+  .domain-arrow {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .domain-arrow-label {
+    font-size: 0.65rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+    pointer-events: auto;
+  }
+  .domain-arrow-label .port { color: var(--zmq); }
+
+  /* Domain diagram — SVG arrows */
+  .domain-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+    overflow: visible;
+  }
+  .domain-svg line {
+    stroke: var(--flow-arrow);
+    stroke-width: 2;
+  }
+  .domain-svg marker path {
+    fill: var(--flow-arrow);
+  }
+
+  @media (max-width: 600px) {
+    .flow { gap: 4px; }
+    .flow-box { font-size: 0.65rem; padding: 4px 7px; }
+    .overview { grid-template-columns: 1fr 1fr; }
+    .domains { grid-template-columns: 1fr; }
+    .d-physics { grid-column: 1; grid-row: 1; margin: 0 0 6px 0; }
+    .d-render  { grid-column: 1; grid-row: 2; margin: 6px 0; }
+    .d-mission { grid-column: 1; grid-row: 3; margin: 6px 0; }
+    .d-los     { grid-column: 1; grid-row: 4; margin: 6px 0 0 0; }
+    .domain-arrow { display: none; }
+  }
+</style>
+
+<h1>Bullet Drone <span>System Architecture</span></h1>
+<p class="subtitle">4-process simulation with swappable physics backend and ZMQ transport</p>
+
+<div class="overview">
+  <div class="overview-card"><div class="num">4</div><div class="label">Processes</div></div>
+  <div class="overview-card"><div class="num">240<span style="font-size:0.6em;font-weight:400"> Hz</span></div><div class="label">Physics rate</div></div>
+  <div class="overview-card"><div class="num">120<span style="font-size:0.6em;font-weight:400"> Hz</span></div><div class="label">Feedback rate</div></div>
+  <div class="overview-card"><div class="num">100<span style="font-size:0.6em;font-weight:400"> Hz</span></div><div class="label">RC command rate</div></div>
+</div>
+
+<!-- ═══════ DOMAIN OVERVIEW ═══════ -->
+<h2>Domain boundaries</h2>
+<p style="font-size:0.85rem; color:var(--fg-muted); margin:-8px 0 16px;">Four distinct software domains, each with its own clock, state, and data ownership.</p>
+
+<div class="domains" id="domainDiagram">
+  <div class="domain d-physics" id="dPhysics">
+    <div class="domain-name">Physical Simulation</div>
+    <div class="domain-pkg">bullet_drone/ &middot; Process 1</div>
+    <ul class="domain-items">
+      <li>PyBullet or PhysX backend (swappable)</li>
+      <li>Rigid-body dynamics at 240 Hz</li>
+      <li>Motor &rarr; propeller &rarr; force chain</li>
+      <li>Sensors: IMU, barometer (modelled)</li>
+      <li>Flight controller (attitude + rate PID)</li>
+      <li>Accepts 18-ch RC, outputs DroneState</li>
+    </ul>
+  </div>
+
+  <div class="domain d-render" id="dRender">
+    <div class="domain-name">Rendering Engine</div>
+    <div class="domain-pkg">bullet_render/ &middot; Process 2</div>
+    <ul class="domain-items">
+      <li>Isaac Sim with RTX renderer</li>
+      <li>USD world (terrain, lighting, truck)</li>
+      <li>Front camera render product</li>
+      <li>Frames shared via POSIX shm</li>
+      <li>Viewport UI + pick-to-place controls</li>
+      <li>Receives drone pose, outputs camera pixels</li>
+    </ul>
+  </div>
+
+  <div class="domain d-mission" id="dMission">
+    <div class="domain-name">Mission</div>
+    <div class="domain-pkg">bullet_app/ &middot; Process 3 (upper half)</div>
+    <ul class="domain-items">
+      <li>HSV colour detection (no ML)</li>
+      <li>State machine: TAKEOFF &rarr; HOVER &rarr; YAW_SEARCH &rarr; YAW_CENTER &rarr; YAW_SETTLE</li>
+      <li>Decides <em>when</em> to search, track, or abort</li>
+      <li>Owns lifecycle commands (start/stop/reset)</li>
+      <li>Hands off bearing to LOS once centred</li>
+    </ul>
+  </div>
+
+  <div class="domain d-los" id="dLos">
+    <div class="domain-name">LOS Tracking</div>
+    <div class="domain-pkg">los_tracking/ &middot; Process 3 (lower half, library)</div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:10px;">
+      <ul class="domain-items">
+        <li>BearingEstimator (&alpha;-&beta; on bbox)</li>
+        <li>TtcEstimator (1/size regression)</li>
+        <li>VerticalEstimator (&alpha;-&beta; on baro)</li>
+      </ul>
+      <ul class="domain-items">
+        <li>LosControl (PID &rarr; roll, pitch, v<sub>z</sub>)</li>
+        <li>Stages: BEARING &rarr; TTC &rarr; TERMINAL</li>
+        <li>Outputs RC channels to physics</li>
+      </ul>
+      <ul class="domain-items">
+        <li>Recovery on target loss or over-tilt</li>
+        <li>Descent feasibility gate</li>
+        <li>Anti-windup, slew limiting, tilt cap</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- Domain flow arrows (desktop only, CSS hides on mobile) -->
+<div style="display:grid; grid-template-columns:1fr auto 1fr; gap:4px 0; align-items:center; margin:-8px 0 20px; font-size:0.72rem; font-family:'JetBrains Mono',monospace;">
+  <div style="text-align:right;">
+    <span style="color:var(--accent-physics); font-weight:600;">PHYSICS</span>
+  </div>
+  <div style="display:flex; flex-direction:column; align-items:center; gap:4px; padding:0 12px;">
+    <div style="display:flex; align-items:center; gap:6px;">
+      <span style="color:var(--zmq);">:5555</span> drone state &rarr;
+    </div>
+    <div style="display:flex; align-items:center; gap:6px;">
+      &larr; RC channels <span style="color:var(--zmq);">:5559</span>
+    </div>
+  </div>
+  <div>
+    <span style="color:var(--accent-render); font-weight:600;">RENDERER</span>
+  </div>
+
+  <div></div>
+  <div style="text-align:center; padding:4px 12px;">
+    <span style="color:var(--flow-arrow);">&#9474;</span>
+  </div>
+  <div style="text-align:center;">
+    <span style="color:var(--flow-arrow);">&#9474;</span> <span style="color:var(--zmq);">:5556</span> camera frames
+  </div>
+
+  <div></div>
+  <div style="text-align:center; padding:4px 12px;">
+    <span style="color:var(--flow-arrow);">&#9474;</span>
+  </div>
+  <div style="text-align:center;">
+    <span style="color:var(--flow-arrow);">&#9660;</span>
+  </div>
+
+  <div style="text-align:right;">
+    <span style="color:var(--zmq);">:5559</span> RC &larr;
+  </div>
+  <div style="text-align:center; padding:0 12px;">
+    <span style="color:var(--flow-arrow);">&larr;&mdash;&mdash;</span>
+  </div>
+  <div>
+    <span style="color:var(--accent-app); font-weight:600;">MISSION</span> detects &amp; decides
+  </div>
+
+  <div style="text-align:right; color:var(--fg-muted);">
+    barometer via feedback
+  </div>
+  <div style="text-align:center; padding:0 12px;">
+    <span style="color:var(--flow-arrow);">&mdash;&mdash;&rarr;</span>
+  </div>
+  <div>
+    <span style="color:var(--accent-recorder); font-weight:600;">LOS TRACKING</span> steers to target
+  </div>
+</div>
+
+<div style="padding:12px 16px; border-radius:8px; background:var(--surface); border:1px solid var(--border); font-size:0.78rem; margin-bottom:32px; line-height:1.7;">
+  <strong>Key distinction:</strong> <em>Mission</em> decides <strong>what</strong> to do (search, centre, hand off, abort).
+  <em>LOS Tracking</em> decides <strong>how</strong> to fly toward the target (bearing estimation, proportional navigation, control law).
+  <em>Physical Simulation</em> turns RC commands into <strong>forces</strong> (flight controller, motor mix, rigid-body dynamics).
+  <em>Rendering Engine</em> turns drone state into <strong>pixels</strong> (USD scene, RTX camera, shared-memory frames).
+</div>
+
+<!-- ═══════ PROCESS 1: PHYSICS ═══════ -->
+<h2>Process 1 &mdash; Physics</h2>
+<div class="process p-physics">
+  <div class="process-header">
+    <span class="process-name">external_rc/main.py</span>
+    <span class="process-label">Terminal 1</span>
+    <span class="process-desc">Owns simulation loop, control, and physics stepping</span>
+  </div>
+
+  <div class="swap-badge">Swappable &mdash; <code>--physics-backend pybullet | isaac</code></div>
+
+  <div class="subsection-title">Main loop (per step at 240 Hz)</div>
+  <div class="flow">
+    <div class="flow-group"><div class="flow-box">FlightReceiver</div><div class="flow-label">ZMQ SUB :5559</div></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-group"><div class="flow-box">FlightLease</div><div class="flow-label">RC channels</div></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-group"><div class="flow-box">RcSimulation.step()</div><div class="flow-label">one physics tick</div></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-group"><div class="flow-box">RenderPublisher</div><div class="flow-label">ZMQ PUB :5555</div></div>
+  </div>
+
+  <hr class="section-line">
+  <div class="subsection-title">Inside RcSimulation.step()</div>
+  <div class="flow">
+    <div class="flow-group"><div class="flow-box">RcInput</div><div class="flow-label">18 channels</div></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-group"><div class="flow-box">SoftwareRc</div><div class="flow-label">decode AETR</div></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-group"><div class="flow-box">FlightCommandProvider</div><div class="flow-label">HighLevelCommand</div></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-group"><div class="flow-box">DroneEnvironment</div><div class="flow-label">step physics</div></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-group"><div class="flow-box">DroneObservation</div><div class="flow-label">state + sensors</div></div>
+  </div>
+
+  <hr class="section-line">
+  <div class="subsection-title">Controller cascade (inside FlightCommandProvider)</div>
+  <div class="cascade">
+    <div class="cascade-step">
+      <div class="cascade-line"><div class="cascade-dot"></div><div class="cascade-connector"></div></div>
+      <div class="cascade-content">
+        <div class="cascade-name">SoftwareRc &rarr; RcCodec.decode()</div>
+        <div class="cascade-detail">RC channels &rarr; HighLevelCommand (thrust_n, rpy, armed, mode)</div>
+      </div>
+    </div>
+    <div class="cascade-step">
+      <div class="cascade-line"><div class="cascade-dot"></div><div class="cascade-connector"></div></div>
+      <div class="cascade-content">
+        <div class="cascade-name">InternalFlightController.update()</div>
+        <div class="cascade-detail">Stabilization: attitude P &rarr; body-rate PID &rarr; WrenchCommand (thrust + torque)</div>
+      </div>
+    </div>
+    <div class="cascade-step">
+      <div class="cascade-line"><div class="cascade-dot"></div><div class="cascade-connector"></div></div>
+      <div class="cascade-content">
+        <div class="cascade-name">AttitudeController.rates()</div>
+        <div class="cascade-detail">Angle mode: target RPY &rarr; attitude error &rarr; rate setpoints (clamped to max_rates_rad_s)</div>
+      </div>
+    </div>
+    <div class="cascade-step">
+      <div class="cascade-line"><div class="cascade-dot"></div><div class="cascade-connector"></div></div>
+      <div class="cascade-content">
+        <div class="cascade-name">RateController.torque()</div>
+        <div class="cascade-detail">3-axis PID + feedforward &rarr; body torques (N&middot;m)</div>
+      </div>
+    </div>
+    <div class="cascade-step">
+      <div class="cascade-line"><div class="cascade-dot"></div><div class="cascade-connector"></div></div>
+      <div class="cascade-content">
+        <div class="cascade-name">MotorMixer.mix()</div>
+        <div class="cascade-detail">WrenchCommand &rarr; 4&times; per-rotor thrust via inverse allocation matrix, uniformly scaled</div>
+      </div>
+    </div>
+    <div class="cascade-step">
+      <div class="cascade-line"><div class="cascade-dot" style="background:var(--accent-recorder)"></div></div>
+      <div class="cascade-content">
+        <div class="cascade-name">RotorCommand</div>
+        <div class="cascade-detail">4&times; rotor speeds (rad/s) &rarr; physics backend</div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-line">
+  <div class="subsection-title">Force chain (inside physics backend)</div>
+  <div class="flow">
+    <div class="flow-group"><div class="flow-box">RotorCommand</div><div class="flow-label">4&times; rad/s</div></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-group"><div class="flow-box">MotorDynamics</div><div class="flow-label">lag model</div></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-group"><div class="flow-box">PropellerModel</div><div class="flow-label">thrust + torque</div></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-group"><div class="flow-box">ForceChain</div><div class="flow-label">aero forces</div></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-group"><div class="flow-box highlight">Physics Engine</div><div class="flow-label">PyBullet / PhysX</div></div>
+  </div>
+  <div style="margin-top:8px; font-size:0.75rem; color:var(--fg-muted);">
+    ForceChain adds: body drag, rotor drag, angular damping, inflow, flapping, gyroscopic torque, ground effect, propwash
+  </div>
+
+  <hr class="section-line">
+  <div class="subsection-title">Physics backend swap</div>
+  <div style="display:flex; gap:16px; flex-wrap:wrap; margin:8px 0;">
+    <div style="flex:1; min-width:160px; padding:10px 14px; border-radius:8px; background:var(--code-bg); border:1px solid var(--border);">
+      <div style="font-family:'JetBrains Mono',monospace; font-weight:600; font-size:0.78rem;">PyBulletPhysics</div>
+      <div style="font-size:0.72rem; color:var(--fg-muted); margin-top:4px;">
+        Default. <code>uv run</code> with pybullet.<br>
+        Uses <code>p.stepSimulation()</code>.<br>
+        Reset: &lt;10 ms
+      </div>
+    </div>
+    <div style="flex:1; min-width:160px; padding:10px 14px; border-radius:8px; background:var(--accent-physics-bg); border:1px solid var(--accent-physics);">
+      <div style="font-family:'JetBrains Mono',monospace; font-weight:600; font-size:0.78rem;">IsaacPhysics</div>
+      <div style="font-size:0.72rem; color:var(--fg-muted); margin-top:4px;">
+        Runs under <code>isaacsim6.2/python.sh</code>.<br>
+        Uses <code>simulate(dt,t)</code> + <code>fetch_results()</code>.<br>
+        First reset: ~500 ms, then ~30 ms
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ PROCESS 2: RENDERER ═══════ -->
+<h2>Process 2 &mdash; Isaac Sim Renderer</h2>
+<div class="process p-render">
+  <div class="process-header">
+    <span class="process-name">bullet_render/isaac/main.py</span>
+    <span class="process-label">Terminal 2</span>
+    <span class="process-desc">Receives telemetry, renders camera frames, streams images</span>
+  </div>
+  <div class="flow">
+    <div class="flow-group"><div class="flow-box">ZMQ SUB :5555</div><div class="flow-label">telemetry in</div></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-group"><div class="flow-box">Isaac Sim Viewport</div><div class="flow-label">USD world + drone</div></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-group"><div class="flow-box">ZMQ PUB :5556</div><div class="flow-label">camera frames out</div></div>
+  </div>
+  <div style="margin-top:6px; font-size:0.75rem; color:var(--fg-muted);">
+    Camera pixels shared via POSIX shared memory. Loads USD world (e.g. Rivermark terrain).
+  </div>
+</div>
+
+<!-- ═══════ PROCESS 3: BULLET APP ═══════ -->
+<h2>Process 3 &mdash; Mission App</h2>
+<div class="process p-app">
+  <div class="process-header">
+    <span class="process-name">bullet_app</span>
+    <span class="process-label">Terminal 3</span>
+    <span class="process-desc">Detection, LOS tracking, flight control commands</span>
+  </div>
+  <div class="flow">
+    <div class="flow-group"><div class="flow-box">ZMQ SUB :5556</div><div class="flow-label">camera frames in</div></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-group"><div class="flow-box">ImageReceiver</div><div class="flow-label">POSIX shm &rarr; BGR</div></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-group"><div class="flow-box">detect_red_box()</div><div class="flow-label">HSV threshold</div></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-group"><div class="flow-box">Mission FSM</div><div class="flow-label">state machine</div></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-group"><div class="flow-box">ZMQ PUB :5559</div><div class="flow-label">RC commands out</div></div>
+  </div>
+
+  <hr class="section-line">
+  <div class="subsection-title">Vision thread (~500 Hz)</div>
+  <div class="flow">
+    <div class="flow-group"><div class="flow-box">BGR image</div><div class="flow-label">from shm</div></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-group"><div class="flow-box">BGR &rarr; HSV</div><div class="flow-label">cv2.cvtColor</div></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-group"><div class="flow-box">Red mask</div><div class="flow-label">H 0-10 &cup; 170-180</div></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-group"><div class="flow-box">Contours</div><div class="flow-label">largest by area</div></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-group"><div class="flow-box highlight">Bounding box</div><div class="flow-label">(x, y, w, h) or None</div></div>
+  </div>
+  <div style="margin-top:6px; font-size:0.75rem; color:var(--fg-muted);">
+    No ML model &mdash; pure HSV colour thresholding with morphological cleanup (S&ge;100, V&ge;80, min 4px area).
+  </div>
+
+  <hr class="section-line">
+  <div class="subsection-title">Mission state machine</div>
+  <div class="cascade">
+    <div class="cascade-step">
+      <div class="cascade-line"><div class="cascade-dot" style="background:var(--accent-app)"></div><div class="cascade-connector"></div></div>
+      <div class="cascade-content">
+        <div class="cascade-name">TAKEOFF &rarr; HOVER</div>
+        <div class="cascade-detail">Climb to takeoff height, stabilize attitude</div>
+      </div>
+    </div>
+    <div class="cascade-step">
+      <div class="cascade-line"><div class="cascade-dot" style="background:var(--accent-app)"></div><div class="cascade-connector"></div></div>
+      <div class="cascade-content">
+        <div class="cascade-name">YAW_SEARCH</div>
+        <div class="cascade-detail">Rotate at 15&deg;/s scanning for red bounding box in frame</div>
+      </div>
+    </div>
+    <div class="cascade-step">
+      <div class="cascade-line"><div class="cascade-dot" style="background:var(--accent-app)"></div><div class="cascade-connector"></div></div>
+      <div class="cascade-content">
+        <div class="cascade-name">YAW_CENTER &rarr; YAW_SETTLE</div>
+        <div class="cascade-detail">Proportional yaw to center bbox (&plusmn;10px), wait 0.3s settled</div>
+      </div>
+    </div>
+    <div class="cascade-step">
+      <div class="cascade-line"><div class="cascade-dot" style="background:var(--accent-app)"></div><div class="cascade-connector"></div></div>
+      <div class="cascade-content">
+        <div class="cascade-name">LOS_ACQUIRE &rarr; LOS_APPROACH</div>
+        <div class="cascade-detail">Hand off to LosNavigator: bearing from bbox + camera cal + attitude, range from bbox growth rate</div>
+      </div>
+    </div>
+    <div class="cascade-step">
+      <div class="cascade-line"><div class="cascade-dot" style="background:var(--accent-app)"></div></div>
+      <div class="cascade-content">
+        <div class="cascade-name">COMPLETED</div>
+        <div class="cascade-detail">Collision with truck detected &rarr; scenario ends</div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-line">
+  <div class="subsection-title">LOS tracking (los_tracking/navigator.py)</div>
+  <div style="display:grid; grid-template-columns:auto 1fr; gap:8px 14px; align-items:start; margin-bottom:10px;">
+    <div class="flow-box" style="justify-self:end;">Bounding box</div>
+    <div style="display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px;">
+      <span class="flow-arrow">&rarr;</span>
+      <div class="flow-group"><div class="flow-box">BearingEstimator</div><div class="flow-label">&alpha;-&beta; filter &rarr; elevation + azimuth (rad) &amp; rates</div></div>
+      <span class="flow-arrow">&rarr;</span>
+      <div class="flow-group" style="display:flex; flex-direction:column; gap:2px;">
+        <div class="flow-box">LosControl</div>
+        <div class="flow-label">PID on bearing error &rarr; roll<br>PID on elevation error &rarr; v<sub>z</sub><br>fixed pitch &times; approach_scale<br>P-controller heading hold</div>
+      </div>
+      <span class="flow-arrow">&rarr;</span>
+      <div class="flow-group"><div class="flow-box highlight">RC channels</div><div class="flow-label">roll / pitch / yaw / thrust</div></div>
+    </div>
+    <div class="flow-box" style="justify-self:end;">Bounding box</div>
+    <div style="display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px;">
+      <span class="flow-arrow">&rarr;</span>
+      <div class="flow-group"><div class="flow-box">TtcEstimator</div><div class="flow-label">linear fit of 1/&radic;(w&middot;h) vs time &rarr; time-to-contact (s)</div></div>
+      <span class="flow-arrow">&rarr;</span>
+      <div class="flow-group"><div class="flow-label">drives BEARING &rarr; TTC &rarr; TERMINAL stages + descent feasibility</div></div>
+    </div>
+    <div class="flow-box" style="justify-self:end;">Barometer</div>
+    <div style="display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px;">
+      <span class="flow-arrow">&rarr;</span>
+      <div class="flow-group"><div class="flow-box">VerticalEstimator</div><div class="flow-label">&alpha;-&beta; filter &rarr; altitude (m) + v<sub>z</sub> (m/s)</div></div>
+      <span class="flow-arrow">&rarr;</span>
+      <div class="flow-group"><div class="flow-label">altitude hold in recovery + descent feasibility check</div></div>
+    </div>
+  </div>
+  <div style="margin-top:6px; font-size:0.75rem; color:var(--fg-muted);">
+    Also publishes lifecycle commands on :5557 (start, stop, reset, spawn).
+  </div>
+</div>
+
+<!-- ═══════ PROCESS 4: RECORDER ═══════ -->
+<h2>Process 4 &mdash; Recorder</h2>
+<div class="process p-recorder">
+  <div class="process-header">
+    <span class="process-name">mcap_bagger</span>
+    <span class="process-label">Terminal 4</span>
+    <span class="process-desc">Records telemetry and camera to MCAP files</span>
+  </div>
+  <div class="flow">
+    <div class="flow-group"><div class="flow-box">ZMQ SUB :5555</div><div class="flow-label">telemetry</div></div>
+    <span class="flow-arrow">+</span>
+    <div class="flow-group"><div class="flow-box">ZMQ SUB :5556</div><div class="flow-label">camera</div></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-group"><div class="flow-box">.mcap</div><div class="flow-label">recording</div></div>
+  </div>
+</div>
+
+<!-- ═══════ ZMQ TRANSPORT ═══════ -->
+<h2>ZMQ Transport</h2>
+<div style="overflow-x:auto;">
+<table class="transport">
+  <thead><tr><th>Port</th><th>Channel</th><th>Direction</th><th>Data</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="port">5555</td>
+      <td>Telemetry</td>
+      <td class="dir">Physics &rarr; Renderer, Recorder</td>
+      <td>DroneState, flight feedback, platform config</td>
+    </tr>
+    <tr>
+      <td class="port">5556</td>
+      <td>Camera</td>
+      <td class="dir">Renderer &rarr; App, Recorder</td>
+      <td>Frame metadata (pixels via POSIX shm)</td>
+    </tr>
+    <tr>
+      <td class="port">5557</td>
+      <td>Control</td>
+      <td class="dir">App &rarr; Physics</td>
+      <td>Lifecycle: start, stop, reset, spawn, collision</td>
+    </tr>
+    <tr>
+      <td class="port">5559</td>
+      <td>Flight RC</td>
+      <td class="dir">App &rarr; Physics</td>
+      <td>18-channel RC input + flight lease</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ═══════ DATA FLOW DIAGRAM ═══════ -->
+<h2>End-to-end data flow</h2>
+<pre class="mermaid">
+graph LR
+  subgraph T1["Terminal 1 — Physics (240 Hz)"]
+    RC[FlightReceiver]
+    SIM[RcSimulation]
+    PUB[RenderPublisher]
+  end
+  subgraph T2["Terminal 2 — Renderer"]
+    ISR[Isaac Sim Viewport]
+  end
+  subgraph T3["Terminal 3 — Mission App"]
+    IMG[ImageReceiver] --> DET[detect_red_box]
+    DET --> FSM[Mission FSM]
+    FSM --> LOS[LosNavigator]
+  end
+  subgraph T4["Terminal 4 — Recorder"]
+    BAG[mcap_bagger]
+  end
+
+  DET -- ":5559 RC channels" --> RC
+  RC --> SIM
+  SIM --> PUB
+  PUB -- ":5555 telemetry" --> ISR
+  PUB -- ":5555 telemetry" --> BAG
+  ISR -- ":5556 camera" --> DET
+  ISR -- ":5556 camera" --> BAG
+  DET -- ":5557 control" --> SIM
+</pre>
