@@ -160,7 +160,7 @@ def test_sitl_examples_default_to_combined_firmware():
     from examples.altitde_hold_bt.demo_cli import DEFAULT_SITL_BINARY as altitude
     from examples.gps_point_to_point_mavlink.cli import DEFAULT_SITL_BINARY as gps
     from examples.position_square_acro.demo_cli import DEFAULT_SITL_BINARY as square
-    from examples.simulation_launcher.cli import DEFAULT_SITL_BINARY as launcher
+    from launcher.cli import DEFAULT_SITL_BINARY as launcher
     from examples.terrain_following_bt.cli import DEFAULT_SITL_BINARY as terrain
     from examples.terrain_following_mavlink.cli import DEFAULT_SITL_BINARY as mavlink
 

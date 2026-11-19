@@ -87,7 +87,9 @@ uv run --locked python -m examples.altitude_hold.main --headless
 The drone takes off to 3 m, holds, then lands. Remove `--headless` for the PyBullet
 viewer. The example owns its loop and cleanup; Ctrl+C releases resources.
 
-Start the external-controller launcher with `uv run --locked --all-packages --all-extras --all-groups python -m examples.simulation_launcher.main`. It starts one SITL and Godot by default; `--no-sitl` and `--no-render` disable either process. The SITL uses the MAVLink-enabled profile (UART2 TCP 5762) and leaves MSP TCP 5761 for a separate controller such as `bullet-app`.
+Start the external-controller launcher with `uv run --locked --all-packages --all-extras --all-groups launcher`. It starts one SITL and Godot by default; `--no-sitl` and `--no-render` disable either process. The SITL uses the MAVLink-enabled profile (UART2 TCP 5762) and leaves MSP TCP 5761 for a separate controller such as `bullet-app`.
+
+The installed wheel includes the `launcher` command and its Python supervision code. It does not include the Betaflight executable, Godot renderer, or their configuration files. When running outside this checkout, supply `--sitl-binary`, `--sitl-profile`, `--renderer`, and `--render-config` with the paths to those separate installs. Paths for a disabled component are optional; `launcher --no-sitl --no-render` runs only the simulation loop.
 
 ### Red-truck mission in VS Code
 
@@ -433,7 +435,7 @@ see its [asset notes](src/bullet_drone/assets/racer/README.md) and
 
 # Target-enabled launcher
 
-`python -m examples.simulation_launcher.main --target-scene` enables a static
+`launcher --target-scene` enables a static
 red-truck collision body aligned to the packaged Godot scene. On confirmed
 drone contact, the launcher publishes `simulation/drone_1/target_contact` on
 the existing renderer telemetry endpoint (default TCP 5555). Bullet App uses

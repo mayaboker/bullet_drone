@@ -1,7 +1,6 @@
 """Supervise a persistent PyBullet loop and optional external processes."""
 from collections.abc import Sequence
 from contextlib import ExitStack
-from pathlib import Path
 import sys
 import time
 
@@ -15,26 +14,27 @@ from bullet_drone.environment import DroneEnvironment
 from bullet_drone.physics import PyBulletPhysics
 from bullet_drone.sensors import BarometerSensor, ImuSensor
 from bullet_drone.vehicle import load_racer_parameters
-from examples.simulation_launcher.cli import CliParser
-from examples.terrain_following_bt.demo import GRAVITY_M_S2, GRAVITY_VECTOR_M_S2, INITIAL_POSITION_M
-from examples.terrain_following_bt.sitl import SitlSession
+from launcher.cli import CliParser
+from launcher.sitl import SitlSession
 
 
 RATE_HZ = 240
 TIMESTEP_S = 1 / RATE_HZ
 MAX_SIMULATION_STEPS = 2**31 - 1
-MAVLINK_PROFILE = Path(__file__).resolve().parents[2] / 'configs/betaflight-mavlink.config'
+GRAVITY_M_S2 = 9.81
+GRAVITY_VECTOR_M_S2 = (0.0, 0.0, -GRAVITY_M_S2)
+INITIAL_POSITION_M = (0.0, 0.0, 0.015)
 MAVLINK_PORT = 5762
 
 
 def run(options):
     with ExitStack() as resources:
         if options.sitl:
-            sitl = resources.enter_context(SitlSession(options.sitl_binary, profile_path=MAVLINK_PROFILE,
-                                                     extra_ports=(MAVLINK_PORT,), connect_msp=False))
+            sitl = resources.enter_context(SitlSession(options.sitl_binary, profile_path=options.sitl_profile,
+                                                     extra_ports=(MAVLINK_PORT,)))
         viewer = None
         if options.render:
-            from external_render.renderer import ExternalRenderer
+            from launcher.renderer import ExternalRenderer
             viewer = resources.enter_context(ExternalRenderer(
                 options.renderer, options.render_config, profile_name='Simulation Launcher',
                 backend='betaflight' if options.sitl else 'internal',

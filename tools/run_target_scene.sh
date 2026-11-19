@@ -9,4 +9,4 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 uv run --frozen --extra render --extra sitl --extra mavlink \
-  python -m examples.simulation_launcher.main --sitl --render --target-scene
+  launcher --sitl --render --target-scene

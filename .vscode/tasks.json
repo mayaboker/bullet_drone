@@ -21,7 +21,7 @@
         "color": "terminal.ansiGreen"
       },
       "type": "shell",
-      "command": "uv run --frozen --extra render --extra sitl --extra mavlink python -m examples.simulation_launcher.main --sitl --render",
+      "command": "uv run --frozen --extra render --extra sitl --extra mavlink launcher --sitl --render",
       "options": {
         "cwd": "${workspaceFolder}",
         "env": {

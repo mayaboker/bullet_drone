@@ -1,5 +1,6 @@
-from examples.simulation_launcher.cli import CliParser, Options
-from examples.simulation_launcher import main as launcher
+from launcher.cli import CliParser, Options
+from launcher import main as launcher
+import click
 import pytest
 
 
@@ -35,6 +36,33 @@ def test_launcher_uses_mavlink_profile_and_reserves_uart2(monkeypatch):
     monkeypatch.setattr(launcher, 'SitlSession', Session)
     with pytest.raises(RuntimeError, match='Stop after SITL setup'):
         launcher.run(Options(render=False))
-    assert captured['profile_path'] == launcher.MAVLINK_PROFILE
+    assert captured['profile_path'] == Options().sitl_profile
     assert captured['extra_ports'] == (5762,)
-    assert captured['connect_msp'] is False
+
+
+def test_launcher_requires_external_paths_when_checkout_assets_are_unavailable(monkeypatch):
+    import launcher.cli as cli
+    monkeypatch.setattr(cli, 'DEFAULT_SITL_BINARY', None)
+    monkeypatch.setattr(cli, 'DEFAULT_SITL_PROFILE', None)
+    monkeypatch.setattr(cli, 'DEFAULT_RENDERER', None)
+    monkeypatch.setattr(cli, 'DEFAULT_RENDER_CONFIG', None)
+    with pytest.raises(click.UsageError, match='--sitl-binary and --sitl-profile'):
+        CliParser().parse([])
+    with pytest.raises(click.UsageError, match='--renderer and --render-config'):
+        CliParser().parse(['--no-sitl'])
+    assert CliParser().parse(['--no-sitl', '--no-render']).sitl is False
+
+
+def test_launcher_accepts_explicit_external_assets(tmp_path, monkeypatch):
+    import launcher.cli as cli
+    for name in ('DEFAULT_SITL_BINARY', 'DEFAULT_SITL_PROFILE',
+                 'DEFAULT_RENDERER', 'DEFAULT_RENDER_CONFIG'):
+        monkeypatch.setattr(cli, name, None)
+    paths = [tmp_path / name for name in ('sitl', 'profile', 'renderer', 'render.json')]
+    for path in paths:
+        path.touch()
+    options = CliParser().parse([
+        '--sitl-binary', str(paths[0]), '--sitl-profile', str(paths[1]),
+        '--renderer', str(paths[2]), '--render-config', str(paths[3])])
+    assert (options.sitl_binary, options.sitl_profile, options.renderer,
+            options.render_config) == tuple(paths)
