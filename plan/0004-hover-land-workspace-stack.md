@@ -1,7 +1,7 @@
 # Hover/land workspace stack
 
-Status: Pending
-Implementation commit: Pending
+Status: Implemented; static checks passed
+Implementation commits: `d77663839740c9637c43d1b0ff969323d7ed3b35` (`bullet_drone`), `cc73c5bba3d046599e78b028b3bd8902d052407a` (`bullet_ng`)
 
 Goal: Start the hover/land mission with manual View approval from one workspace-level VS Code task.
 

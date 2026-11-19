@@ -1,7 +1,7 @@
 # Target mission stack task
 
-Status: Pending
-Implementation commit: Pending
+Status: Implemented; static checks passed
+Implementation commits: `96868e7` (initial stack), `c8b7738` and `2dd072c` (`bullet_ng` workspace move), `d776638` and `cc73c5b` (`bullet_ng` shared launch updates)
 
 Goal: Start the target scene, Visual, target-hit App, and View from one VS Code task, with a separate terminal for each process.
 
