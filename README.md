@@ -94,10 +94,10 @@ Start the external-controller launcher with `uv run --locked --all-packages --al
 Open `bullet_ng.code-workspace` and run **Bullet: Run target mission stack** from
 the workspace tasks. It opens
 separate task terminals for the target-enabled simulation and SITL, Visual,
-`bullet-app --mode auto --mission target-hit`, and View. The App task waits for
+`bullet-app --mode manual --mission target-hit`, and View. The App task waits for
 the SITL TCP listeners before connecting. In View, confirm **Mission:
-target-hit**, then press **Arm** and **Start target mission**. A fresh Visual
-result changes Start from **Waiting for live target detector** to **ready**.
+target-hit**, then press **Arm** and **Start target mission**. Visual output is
+used once the mission begins searching after hover.
 After takeoff and hover, **search** means the mission is looking for the
 truck; **center**, **settle**, or **los** means it received a nonempty target
 box. Visual's `no_target` count rises when it processes an image without
@@ -107,6 +107,16 @@ Stop any earlier launcher, Visual, App, and View tasks before starting the
 stack so their ports are available. The older **Bullet: Run target scene
 (SITL + renderer + visual)** task already starts Visual, so do not run it
 alongside the stack.
+
+### Hover/land mission in VS Code
+
+Open `bullet_ng.code-workspace` and run **Bullet: Run hover/land mission
+stack**. It opens separate terminals for the simulation with Betaflight SITL
+and Godot renderer, `bullet-app --mode manual --mission hover-land`, and Bullet
+View. The App terminal waits for the SITL listeners. In View, press **Arm** and
+**Start hover mission**. The packaged mission profile climbs 20 m above launch,
+hovers for 10 seconds, then lands and disarms. Stop the other stack before
+starting this one because both use the same SITL and renderer ports.
 
 ## Usage
 

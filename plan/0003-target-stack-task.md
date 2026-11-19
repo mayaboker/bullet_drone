@@ -5,9 +5,9 @@ Implementation commit: Pending
 
 Goal: Start the target scene, Visual, target-hit App, and View from one VS Code task, with a separate terminal for each process.
 
-Implementation steps: Add four child tasks and a parallel compound task. Wait for SITL TCP listeners before launching App so the parallel start does not race SITL startup. Keep the existing combined target scene task available. Move the stack and child tasks to `bullet_ng.code-workspace` so the compound task is available at workspace level.
+Implementation steps: Add four child tasks and a parallel compound task. Wait for SITL TCP listeners before launching App so the parallel start does not race SITL startup. Keep the existing combined target scene task available. Move the stack and child tasks to `bullet_ng.code-workspace` so the compound task is available at workspace level. Share the View child and generic SITL readiness helper with the hover/land stack.
 
-Interface changes: Add a `Bullet: Run target mission stack` task in `bullet_ng.code-workspace`. The App child task explicitly selects `--mode auto --mission target-hit`, with `${workspaceFolder:bullet_drone}` as the working directory.
+Interface changes: Add a `Bullet: Run target mission stack` task in `bullet_ng.code-workspace`. The App child task explicitly selects `--mode manual --mission target-hit`, with `${workspaceFolder:bullet_drone}` as the working directory. Manual is the View-approval setting after the mission refactor.
 
 Verification: Parse the task JSON, inspect task labels and commands, and check that the App wait script parses. Confirm existing live process configuration explains the reported hover-land behavior.
 
