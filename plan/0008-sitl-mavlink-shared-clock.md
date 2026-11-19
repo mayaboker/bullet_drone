@@ -10,4 +10,4 @@ Verification: apply-check the patch against the pinned clean source, build the G
 
 Scope/defaults: preserve the existing uncommitted Bullet App changes. Restart the running target stack to load the rebuilt binary. No commit or push requested.
 
-Status: Implemented. The patch applied to the clean pinned source, the GPS/MAVLink binary built, and the source checkout was restored clean. The rebuilt stack produced 429 mapped ATTITUDE samples aged 5.8–26.8 ms with no future samples. Bullet App then reached LOS commit, reported a hit, disarmed, and exited successfully with zero ATTITUDE mapping rejections. The App process is stopped. Implementation commit: Pending (no commit requested).
+Status: Implemented. The patch applied to the clean pinned source, the GPS/MAVLink binary built, and the source checkout was restored clean. The rebuilt stack produced 429 mapped ATTITUDE samples aged 5.8–26.8 ms with no future samples. Bullet App then reached LOS commit, reported a hit, disarmed, and exited successfully with zero ATTITUDE mapping rejections. The App process is stopped. Implementation commit: `404d7b3`.
