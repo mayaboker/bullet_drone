@@ -30,7 +30,8 @@ SHM_LOG_PATTERN = re.compile(r'^SHM publisher session: ([0-9a-f]{32})\r?$', re.M
 
 
 class ExternalRenderer:
-    def __init__(self, executable, config, *, profile_name='external_render', backend='internal'):
+    def __init__(self, executable, config, *, profile_name='external_render', backend='internal',
+                 window_monitor=None, window_half=None):
         self.executable = Path(executable).resolve()
         if not self.executable.is_file() or not os.access(self.executable, os.X_OK):
             raise FileNotFoundError(
@@ -39,6 +40,8 @@ class ExternalRenderer:
         self.publisher = RenderPublisher(config, profile_name=profile_name, backend=backend)
         self.transport = load_transport(self.publisher.transport_path)
         self.physics_id = uuid4().hex
+        self.window_monitor = window_monitor
+        self.window_half = window_half
         self.process = self.log = self.images = self.reader = None
         self.owned_sessions = set()
         self.resources = ExitStack()
@@ -71,8 +74,12 @@ class ExternalRenderer:
         self.publisher.start()
 
     def _start_godot(self):
+        window_args = []
+        if self.window_monitor:
+            from external_render.monitor import godot_window_args
+            window_args = godot_window_args(self.window_monitor, self.window_half)
         self.process = subprocess.Popen(
-            [str(self.executable), '--disable-vsync', '--', '--transport-config',
+            [str(self.executable), '--disable-vsync', *window_args, '--', '--transport-config',
              str(self.publisher.transport_path.resolve())],
             stdout=self.log, stderr=subprocess.STDOUT)
         self.resources.callback(self._stop_process)

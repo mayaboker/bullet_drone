@@ -20,6 +20,8 @@ class Options:
     render_config: Path = DEFAULT_RENDER_CONFIG
     renderer: Path = DEFAULT_RENDERER
     target_scene: bool = False
+    render_monitor: str | None = None
+    render_half: str | None = None
 
 
 class CliParser:
@@ -32,10 +34,17 @@ class CliParser:
                       default=DEFAULT_RENDER_CONFIG)
         @click.option('--renderer', type=click.Path(dir_okay=False, path_type=Path), default=DEFAULT_RENDERER)
         @click.option('--target-scene', is_flag=True, help='Enable the red-truck physics collider and contact event.')
-        def command(sitl, render, sitl_binary, render_config, renderer, target_scene):
+        @click.option('--render-monitor', help='XRandR monitor name for the Godot window (e.g. DP-1-0).')
+        @click.option('--render-half', type=click.Choice(['top', 'bottom']),
+                      help='Use the top or bottom half of --render-monitor.')
+        def command(sitl, render, sitl_binary, render_config, renderer, target_scene, render_monitor,
+                    render_half):
             """Run a persistent PyBullet simulation with optional SITL and rendering."""
             if target_scene and (not sitl or not render):
                 raise click.UsageError('--target-scene requires --sitl and --render')
-            return Options(sitl, render, sitl_binary, render_config, renderer, target_scene)
+            if render_half and not render_monitor:
+                raise click.UsageError('--render-half requires --render-monitor')
+            return Options(sitl, render, sitl_binary, render_config, renderer, target_scene,
+                           render_monitor, render_half)
 
         return command.main(args=argv, prog_name='simulation-launcher', standalone_mode=False)

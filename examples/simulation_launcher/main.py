@@ -37,7 +37,8 @@ def run(options):
             from external_render.renderer import ExternalRenderer
             viewer = resources.enter_context(ExternalRenderer(
                 options.renderer, options.render_config, profile_name='Simulation Launcher',
-                backend='betaflight' if options.sitl else 'internal'))
+                backend='betaflight' if options.sitl else 'internal',
+                window_monitor=options.render_monitor, window_half=options.render_half))
         vehicle = load_racer_parameters()
         config = SimulationConfig(SimulationSettings(TIMESTEP_S, MAX_SIMULATION_STEPS,
                                                      GRAVITY_VECTOR_M_S2, gui=False),

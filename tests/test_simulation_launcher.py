@@ -14,6 +14,11 @@ def test_launcher_can_disable_either_process():
     assert not options.sitl and not options.render
 
 
+def test_launcher_accepts_render_monitor():
+    assert CliParser().parse(['--render-monitor', 'DP-1-0']).render_monitor == 'DP-1-0'
+    assert CliParser().parse(['--render-monitor', 'DP-1-0', '--render-half', 'top']).render_half == 'top'
+
+
 def test_launcher_uses_mavlink_profile_and_reserves_uart2(monkeypatch):
     captured = {}
 
