@@ -91,7 +91,8 @@ Start the external-controller launcher with `uv run --locked --all-packages --al
 
 ### Red-truck mission in VS Code
 
-Run **Bullet: Run target mission stack** from this project's tasks. It opens
+Open `bullet_ng.code-workspace` and run **Bullet: Run target mission stack** from
+the workspace tasks. It opens
 separate task terminals for the target-enabled simulation and SITL, Visual,
 `bullet-app --mode auto --mission target-hit`, and View. The App task waits for
 the SITL TCP listeners before connecting. In View, confirm **Mission:
