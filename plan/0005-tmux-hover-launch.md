@@ -1,7 +1,7 @@
 # tmux hover/land launch
 
 Status: Implemented; focused and live checks passed
-Implementation commit: Pending
+Implementation commits: `8d99ee2620ed4de2b990b779fca17aa4650d7dee` (`bullet_drone`), `3651d5bfff7d1ac0b92a36252ab1bc5bd7c9ce44` (`bullet_ng`)
 
 Goal: Launch the existing manual hover/land stack in a reusable tmuxp session with the renderer in the top half of the requested monitor.
 
