@@ -346,8 +346,10 @@ physics sends noisy IMU and barometer FDM on UDP 9003 and consumes normalized
 motor outputs on UDP 9002. MSP RC and estimator feedback remain application-owned.
 Build pinned Betaflight 2026.6.2 with MAVLink and GPS support using
 `tools/setup_betaflight_mavlink_sitl.sh --gps`. Its GPS-capable patch reads
-barometer pressure from FDM field 17. GPS-disabled examples retain their
-GPS-disabled profiles and sensor streams; GPS examples use a virtual-GPS profile.
+barometer pressure from FDM field 17 and gives MAVLink TIMESYNC and ATTITUDE
+the same SITL boot clock. Restart the SITL stack after rebuilding so it loads
+the new binary. GPS-disabled examples retain their profiles and sensor streams;
+GPS examples use a virtual-GPS profile.
 The setup script requires a clean upstream source checkout.
 Use the standalone Betaflight examples listed above.
 See the [bridge reference](docs/design/betaflight-sitl-bridge.md) for ports,

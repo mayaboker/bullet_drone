@@ -258,8 +258,17 @@ reversed only the known former patch before rebuilding.
 | Mixer / tuning | Existing quad-X profile and gains | Preserve motor order and controller settings. |
 
 Field 17 remains populated for wire-layout compatibility; Gazebo mode ignores it.
-There is no patched fallback or direct sensor-altitude option. MAVLink changes
-are deferred; this bridge continues to use the existing MSP application path.
+There is no patched fallback or direct sensor-altitude option. The GPS SITL patch
+also derives `millis64()` from `micros64()` and answers MAVLink TIMESYNC with
+64-bit `micros64()`. ATTITUDE `time_boot_ms` and TIMESYNC `tc1` therefore use the
+same scaled boot clock, without a 32-bit microsecond wrap. MSP remains the RC
+control path.
+
+After rebuilding, restart the target stack to load the new executable. In a
+10-second live check, 429 mapped ATTITUDE samples were 5.8–26.8 ms old with no
+future timestamps; an automatic target mission then reached LOS commit and
+reported a hit with zero ATTITUDE mapping rejections. See
+[plan 0008](../../plan/0008-sitl-mavlink-shared-clock.md).
 
 Verification results are recorded in [plan 0054](../../plan/0054-remove-sitl-patch.md).
 Live upstream checks confirmed that a 100 Pa measured-pressure drop changed MSP

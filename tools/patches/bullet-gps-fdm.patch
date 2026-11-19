@@ -30,3 +30,22 @@
      // Gazebo Harmonic's SphericalFromLocalPosition inverts horizontal position
      // deltas: moving East in the ENU world frame produces DECREASING longitude,
      // and moving North produces DECREASING latitude. Mirror the GPS position
+@@ -707,10 +714,3 @@
+ {
+-    static uint64_t last = 0;
+-    static uint64_t out = 0;
+-    uint64_t now = nanos64_real();
+-
+-    out += (now - last) * simRate;
+-    last = now;
+-
+-    return out / (1000 * 1000);
++    return micros64() / 1000;
+ }
+--- a/src/main/telemetry/mavlink.c
++++ b/src/main/telemetry/mavlink.c
+@@ -280,3 +280,3 @@
+     mavlink_msg_timesync_pack(MAVLINK_SYSTEM_ID, MAVLINK_COMPONENT_ID, &mavMsg,
+-        (int64_t)micros() * 1000LL,
++        (int64_t)micros64() * 1000LL,
+         timesync.ts1,
