@@ -15,3 +15,9 @@ The request envelope contains exactly topic, drone_id and payload. Spawn payload
 Import SpawnRequest, SpawnPayload, WindRequest, CommandRequest, CommandPayload and OperationReply from bullet_simulation_protocol.requests. Their from_dict methods validate untrusted dictionaries, and to_dict exports JSON-ready values. The primary wind module retains WindSettingsMessage. Legacy command, state, pose, spawn and wind JSON Schemas are removed; the retained collision schema is separate.
 
 See [three request topics](../../docs/design/three-request-topics.md), [minimal pose](../../docs/design/minimal-camera-pose.md), [complete feedback](../../docs/design/simulation-feedback.md), and [simulation I/O](../../docs/simulation/io.md). Future renderer state/wind subscriptions are deferred. Only the wind example starts the shared request service in this milestone.
+
+`view_bbox.py` defines the Bullet App → Bullet View MAVLink `V2_EXTENSION`
+payload for local message type 32768. It contains a little-endian uint16 JSON
+length followed by compact JSON with exactly `fid` and `bbox` (`null` or a pixel
+rectangle). The decoder accepts zero padding to MAVLink's 249-byte array and
+rejects malformed lengths, nonzero padding, and invalid coordinates.
