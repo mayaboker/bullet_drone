@@ -1,7 +1,7 @@
 # View bbox MAVLink codec
 
 Status: Implemented; focused and live checks passed
-Implementation commit: Pending
+Implementation commit: `f8bda7817b29fbcea5184c13c2f1562914b71b0d`
 
 Goal: Share a validated fid/bbox payload between Bullet App and Bullet View.
 
