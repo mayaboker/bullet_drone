@@ -10,4 +10,4 @@ Verification: `bash -n`, workspace JSON parsing, tmux YAML parsing, and `git dif
 
 Scope/defaults: Use the workspace's existing `~/workspaces/bullet_ng` and `~/projects/bullet_app` layout. Preserve unrelated uncommitted workspace changes. No live SITL launch is required for the path move.
 
-Status: Implemented and verified; no live SITL run. Implementation commit: Pending (no commit requested).
+Status: Implemented and verified; no live SITL run. Implementation commits: `e4b1d1fb38d5776c709c8c61a8d49613a30281b4` (`bullet_ng`), `c42106ee01869e7430dc0da21b0375122463eae5` (`bullet_drone`).
