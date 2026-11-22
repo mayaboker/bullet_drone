@@ -120,6 +120,9 @@ View. The App terminal waits for the SITL listeners. In View, press **Arm** and
 hovers for 10 seconds, then lands and disarms. Stop the other stack before
 starting this one because both use the same SITL and renderer ports.
 
+The workspace owns the App listener-wait and startup script under
+`bullet_ng/launch/`; this repository provides the simulation launcher only.
+
 ## Usage
 
 | Example | Description | Control backend |
