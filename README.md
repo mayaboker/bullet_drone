@@ -20,6 +20,7 @@ simulation can run headless or with a viewer.
 - Configurable IMU, barometer, opt-in GPS, aerodynamics and wind.
 - Headless operation, PyBullet GUI and an optional packaged Godot viewer.
 - Runnable altitude, position, terrain-following and GPS mission examples.
+- Launcher Start, Stop and Reset over ZeroMQ, with a published lifecycle state for Bullet View.
 
 ## Architecture
 
@@ -65,8 +66,8 @@ to change the sampling rate.
 ## Requirements
 
 - **Python:** 3.12 or newer, with **uv** for dependency management and execution.
-- **Core dependencies:** PyBullet, Click, Loguru and PyYAML.
-- **Optional extras:** `render` adds ZeroMQ and workspace protocol packages;
+- **Core dependencies:** PyBullet, Click, Loguru, PyYAML and the ZeroMQ simulation protocol package.
+- **Optional extras:** `render` adds the image transport package;
   `mavlink` adds pymavlink. `sitl` is an empty compatibility extra.
 - **Display:** PyBullet GUI needs a desktop/X11 session; headless physics needs none.
 - **Packaged renderer:** Ubuntu 24.04/Linux x86_64, OpenGL drivers and runtime
@@ -96,6 +97,8 @@ The drone takes off to 3 m, holds, then lands. Remove `--headless` for the PyBul
 viewer. The example owns its loop and cleanup; Ctrl+C releases resources.
 
 Start the external-controller launcher with `uv run --locked --all-packages --all-extras --all-groups launcher`. It starts one SITL and Godot by default; `--no-sitl` and `--no-render` disable either process. The SITL uses the MAVLink-enabled profile (UART2 TCP 5762) and leaves MSP TCP 5761 for a separate controller such as `bullet-app`.
+
+The launcher starts physics immediately and serves simulation Start, Stop and Reset requests at `tcp://127.0.0.1:5561` (`--simulation-control-endpoint` changes it). With rendering enabled, it publishes `simulation/drone_1/state` on TCP 5555 at transitions and 2 Hz. Stop requires Reset before Start. Reset restarts physics, sensors and the owned SITL process, then leaves the simulation stopped. Restart Bullet App after Reset before another flight. See [launcher simulation control](docs/design/launcher-simulation-control.md). TCP 5560 remains Bullet Visual's bounding-box publisher in the mission stack.
 
 Pass `--gps` to enable the ideal virtual GPS sensor, use the matching `betaflight-mavlink-gps.config` profile, and encode GPS readings in the FDM stream. The GPS profile sets `altitude_source = BARO_ONLY`, so the firmware's altitude estimate uses barometer measurements while raw GPS telemetry remains available. Simulation world axes are North–West–Up; GPS output converts to geographic coordinates and ENU velocity. The synthetic world origin is latitude 0°, longitude 0°, altitude 100 m MSL. The matching GPS-capable SITL binary is required. With `--no-gps`, the SITL launcher still samples synthetic coordinates and puts longitude/latitude in FDM position X/Y for testing. Betaflight GPS stays disabled, while position Z carries barometer-derived altitude. The Bullet NG mission stacks use `--no-gps`.
 
@@ -289,7 +292,7 @@ Renderer lifecycle queries and the legacy state schema/topic are removed. Contro
 
 Camera pose uses a [minimal dataclass](docs/design/minimal-camera-pose.md); rendered image metadata carries its simulation-step header unchanged.
 
-Current simulation-control protocol: one request_endpoint (default TCP 5560), with topic spawn/wind/command, drone_id and payload. Replies contain success, plus reason only on failure. Public IDs, client timestamps, getters, polling, state snapshots and automatic retries are removed. The renderer is a request client; future state/wind subscriptions and display behavior are deferred.
+The wind example uses a separate request endpoint (default TCP 5560) for spawn, wind and command operations. Its renderer is a request client and has no lifecycle state subscription. The persistent launcher uses TCP 5561 for command requests and publishes its own state for Bullet View; see [launcher simulation control](docs/design/launcher-simulation-control.md).
 
 ## Configuration
 

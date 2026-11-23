@@ -98,6 +98,6 @@ in the shared transport worker, while observation scheduling stays in RenderPubl
 
 Wind now uses request/reply only in the wind example. See [wind protocol](wind-request-reply.md).
 
-Legacy state.json and simulation/state publication are removed. The renderer sends no lifecycle state query. Command buttons use fresh wind/spawn identities, display correlated results, and let simulation reject invalid transitions. A timeout reports Outcome unknown without automatic retry or reconciliation queries.
+Legacy state.json and simulation/state publication are removed from the wind example. The persistent launcher now publishes `simulation/drone_1/state` for Bullet View; see [launcher simulation control](launcher-simulation-control.md). The renderer sends no lifecycle state query. Wind-example command buttons use fresh wind/spawn identities and display per-command results. A timeout reports Outcome unknown without automatic retry.
 
 Image descriptor version 3 copies the pose header and drone_id. See [minimal camera pose](minimal-camera-pose.md).

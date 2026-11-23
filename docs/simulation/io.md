@@ -36,6 +36,7 @@ open another listening port. PUB/SUB traffic is multipart topic plus JSON.
 | ZeroMQ TCP 5555 | Simulation RenderPublisher, PUB | Godot, app and optional consumers, SUB | Scene and feedback; `telemetry_endpoint` |
 | ZeroMQ TCP 5556 | Godot image publisher, PUB | Image readers, SUB | Image descriptors; `image_endpoint` |
 | ZeroMQ TCP 5560, wind example only | Simulation wind service, REP | Godot wind client, REQ | Get/set wind, one JSON request and correlated reply; `request_endpoint` |
+| ZeroMQ TCP 5561, persistent launcher | Simulation command service, REP | Bullet View, REQ | Start, Stop, Reset; `--simulation-control-endpoint` |
 | UDP 9003 | SITL state listener | Simulation UdpSitlBridge | Binary FDM input |
 | UDP 9002 | Simulation UdpSitlBridge | SITL | Binary motor output; simulation also sends FDM from this bound socket |
 | TCP 5761 | SITL virtual UART1 | Application MSP client | RC, configuration and estimator queries |
@@ -51,12 +52,13 @@ external app RC receiver. Remaining publisher endpoints are configurable.
 
 Topics below are exact current names, including fixed `drone_1` namespaces.
 A changed YAML drone identity does not automatically rename every topic.
-PUB/SUB endpoints carry UTF-8 topic and JSON payload as two frames. Wind REQ/REP carries one JSON object per request/reply, without a topic frame.
+Most PUB/SUB topics carry UTF-8 topic and JSON payload as two frames; ground-truth recording adds a publish-time header frame. REQ/REP carries one JSON object per request/reply, without a topic frame.
 
 | Endpoint | Topic | Data / use | Cadence or trigger |
 | --- | --- | --- | --- |
 | 5555 | `camera/front/camera_info` | Stream identity, capture fps and ROS-shaped pinhole calibration | Every 1 s |
 | 5555 | `render/drone_1/profile` | Backend, model and profile identity | Every 1 s |
+| 5555 | `simulation/drone_1/state` | Persistent launcher lifecycle state and revision for View | On transitions and 2 Hz |
 | 5555 | `render/drone_1/pose` | World position/velocity and XYZW attitude, sample identity | Configured capture fps; stopped refresh 1 Hz |
 | 5555 | `flight/drone_1/feedback` | Complete ground truth, all configured sensors and optional estimated attitude | Every observation offered, latest value under load |
 | 5556 | `camera/front/image` | SHM descriptor, dimensions and capture/source metadata | Rendered captures |
@@ -100,8 +102,8 @@ Wind now uses request/reply only in the wind example. See [wind protocol](../des
 
 Feedback uses [dataclasses and explicit measurement headers](../design/simulation-feedback.md), with no JSON Schema or lifecycle fields.
 
-Start/Stop/Reset and `get_simulation_state` use the shared TCP 5560 REQ/REP service in the wind example. Command and heartbeat PUB/SUB are removed, while collision transport stays on TCP 5557. See [command lifecycle](../design/command-request-reply.md).
+The wind example uses TCP 5560 for mutation-only spawn, wind and command requests. The persistent launcher uses TCP 5561 for Start/Stop/Reset and publishes state on TCP 5555. There is no state getter. See [launcher simulation control](../design/launcher-simulation-control.md).
 
-Legacy state.json and simulation/state publication are removed. The renderer sends no lifecycle state query. Command buttons use fresh wind/spawn identities, display correlated results, and let simulation reject invalid transitions. A timeout reports Outcome unknown without automatic retry or reconciliation queries.
+Legacy state.json and simulation/state publication are removed from the wind example. The persistent launcher publishes `simulation/drone_1/state` at 2 Hz and on transitions for Bullet View; see [launcher simulation control](../design/launcher-simulation-control.md).
 
 The shared endpoint now accepts mutation-only spawn/wind/command topics. No getters or renderer polling remain. See [three-topic protocol](../design/three-request-topics.md).

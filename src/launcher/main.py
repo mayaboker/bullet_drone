@@ -2,6 +2,7 @@
 from collections.abc import Sequence
 from contextlib import ExitStack
 from functools import partial
+import socket
 import sys
 import time
 
@@ -19,6 +20,7 @@ from bullet_drone.sensors import BarometerSensor, GpsSensor, ImuSensor
 from bullet_drone.vehicle import load_racer_parameters
 from launcher.cli import CliParser
 from launcher.sitl import SitlSession
+from launcher.control import SimulationControl
 
 
 RATE_HZ = 240
@@ -28,6 +30,9 @@ GRAVITY_M_S2 = 9.81
 GRAVITY_VECTOR_M_S2 = (0.0, 0.0, -GRAVITY_M_S2)
 INITIAL_POSITION_M = (0.0, 0.0, 0.015)
 MAVLINK_PORT = 5762
+MSP_PORT = 5761
+SITL_READY_TIMEOUT_S = 10.0
+SITL_READY_POLL_S = 0.05
 GPS_ORIGIN_LATITUDE_DEG = 0.0
 GPS_ORIGIN_LONGITUDE_DEG = 0.0
 GPS_ORIGIN_ALTITUDE_M = 100.0
@@ -44,11 +49,51 @@ def _simulation_config(options):
                             sensors=SensorsSettings(gps=gps))
 
 
+def _wait_sitl_ready(session):
+    """Confirm that the fresh firmware has opened both App TCP listeners."""
+    deadline = time.monotonic() + SITL_READY_TIMEOUT_S
+    while time.monotonic() < deadline:
+        session.check_running()
+        ready = True
+        for port in (MSP_PORT, MAVLINK_PORT):
+            with socket.socket() as probe:
+                probe.settimeout(SITL_READY_POLL_S)
+                if probe.connect_ex(('127.0.0.1', port)) != 0:
+                    ready = False
+                    break
+        if ready:
+            return
+        time.sleep(SITL_READY_POLL_S)
+    raise TimeoutError('SITL MSP/MAVLink listeners did not become ready')
+
+
 def run(options):
     with ExitStack() as resources:
+        sitl = None
+        backend = None
+
+        def close_firmware():
+            nonlocal sitl, backend
+            old_backend, backend = backend, None
+            old_sitl, sitl = sitl, None
+            try:
+                if old_backend is not None:
+                    old_backend.close()
+            finally:
+                if old_sitl is not None:
+                    old_sitl.__exit__(None, None, None)
+
+        resources.callback(close_firmware)
+
+        def open_sitl():
+            nonlocal sitl
+            candidate = SitlSession(options.sitl_binary, profile_path=options.sitl_profile,
+                                    extra_ports=(MAVLINK_PORT,), gps_enabled=options.gps)
+            candidate.__enter__()
+            sitl = candidate
+
         if options.sitl:
-            sitl = resources.enter_context(SitlSession(options.sitl_binary, profile_path=options.sitl_profile,
-                                                     extra_ports=(MAVLINK_PORT,), gps_enabled=options.gps))
+            open_sitl()
         viewer = None
         if options.render:
             from launcher.renderer import ExternalRenderer
@@ -65,38 +110,74 @@ def run(options):
             barometer=BarometerSensor(config.sensors.barometer),
             gps=GpsSensor(config.sensors.gps) if config.sensors.gps.enabled else None)
         resources.callback(environment.close)
-        backend = (BetaflightBackend(vehicle, UdpSitlBridge(),
-                                    encoder=partial(pack_fdm, gps_enabled=options.gps,
-                                                    gps_coordinates_only=not options.gps))
-                   if options.sitl else None)
-        if backend is not None:
-            resources.callback(backend.close)
-        observation = environment.reset()
-        if backend is not None:
+        def open_backend(observation):
+            nonlocal backend
+            backend = BetaflightBackend(vehicle, UdpSitlBridge(),
+                                        encoder=partial(pack_fdm, gps_enabled=options.gps,
+                                                        gps_coordinates_only=not options.gps))
             backend.reset(observation)
-        ready = False
+
+        observation = environment.reset()
+        if options.sitl:
+            open_backend(observation)
+
         contact_published = False
+
+        def reset_simulation():
+            nonlocal contact_published
+            close_firmware()
+            fresh = environment.reset()
+            try:
+                if options.sitl:
+                    open_sitl()
+                    open_backend(fresh)
+                    _wait_sitl_ready(sitl)
+                if viewer:
+                    viewer.publisher.clear_contact()
+                    viewer.wait_ready(fresh)
+                contact_published = False
+                return fresh
+            except Exception:
+                close_firmware()
+                raise
+
+        def on_state(state):
+            if viewer:
+                viewer.publisher.set_simulation_state(state)
+                viewer.set_running(state.state == 'running')
+
+        control = resources.enter_context(SimulationControl(
+            options.simulation_control_endpoint, observation, on_state))
+        ready = False
         next_step = time.monotonic()
         while True:
-            if options.sitl:
+            if sitl is not None and control.state == 'running':
                 sitl.check_running()
             if viewer:
                 viewer.ensure_running()
                 if not ready:
                     viewer.wait_ready(observation)
-                    viewer.set_running(True)
+                    viewer.set_running(control.state == 'running')
                     ready = True
+            observation = control.update(observation, reset_simulation)
             remaining = next_step - time.monotonic()
             if remaining > 0:
                 time.sleep(remaining)
             next_step = time.monotonic() + TIMESTEP_S
-            if backend:
+            if control.state == 'error':
+                # A failed physics reset may leave the environment unready.
+                # Keep the service alive so the operator can retry Reset.
+                continue
+            if backend and control.state == 'running':
                 observation = environment.step(backend.command(observation))
             else:
+                if backend:
+                    backend.command(observation)
                 observation = environment.hold()
             if viewer:
                 viewer.consume(observation)
-                if options.target_scene and not contact_published and physics.target_contact():
+                if (control.state == 'running' and options.target_scene
+                        and not contact_published and physics.target_contact()):
                     viewer.publisher.set_contact(observation.ground_truth)
                     contact_published = True
 

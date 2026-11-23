@@ -93,7 +93,7 @@ query is enabled by the simulation examples.
 - [Bundled configuration](../../external_render/configs/physics.json)
 - [ROS CameraInfo definition](https://github.com/ros2/common_interfaces/blob/rolling/sensor_msgs/msg/CameraInfo.msg)
 
-Stopped pose refresh is local-only at 1 Hz via set_running(bool). No lifecycle state topic is published.
+Stopped pose refresh is local-only at 1 Hz via set_running(bool). The persistent launcher additionally publishes its lifecycle on `simulation/drone_1/state`; the wind example does not publish a lifecycle state topic.
 
 Publisher-only workers and idle request clients have no input sockets registered
 with the poller. An empty ZeroMQ poll returns immediately, regardless of its

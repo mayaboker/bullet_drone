@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import click
+from bullet_simulation_protocol import validate_endpoint
+from bullet_simulation_protocol.state import DEFAULT_CONTROL_ENDPOINT
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -34,6 +36,7 @@ class Options:
     render_monitor: str | None = None
     render_half: str | None = None
     gps: bool = False
+    simulation_control_endpoint: str = DEFAULT_CONTROL_ENDPOINT
 
 
 class CliParser:
@@ -52,8 +55,10 @@ class CliParser:
         @click.option('--render-monitor', help='XRandR monitor name for the Godot window (e.g. DP-1-0).')
         @click.option('--render-half', type=click.Choice(['top', 'bottom']),
                       help='Use the top or bottom half of --render-monitor.')
+        @click.option('--simulation-control-endpoint', default=DEFAULT_CONTROL_ENDPOINT,
+                      help='Loopback ZeroMQ simulation command endpoint.')
         def command(sitl, render, sitl_binary, sitl_profile, gps, render_config, renderer, target_scene,
-                    render_monitor, render_half):
+                    render_monitor, render_half, simulation_control_endpoint):
             """Run a persistent PyBullet simulation with optional SITL and rendering."""
             if sitl_profile is None:
                 sitl_profile = DEFAULT_SITL_GPS_PROFILE if gps else DEFAULT_SITL_PROFILE
@@ -65,7 +70,11 @@ class CliParser:
                 raise click.UsageError('SITL requires --sitl-binary and --sitl-profile')
             if render and (renderer is None or render_config is None):
                 raise click.UsageError('Rendering requires --renderer and --render-config')
+            try:
+                validate_endpoint(simulation_control_endpoint)
+            except ValueError as error:
+                raise click.UsageError(str(error)) from error
             return Options(sitl, render, sitl_binary, sitl_profile, render_config, renderer, target_scene,
-                           render_monitor, render_half, gps)
+                           render_monitor, render_half, gps, simulation_control_endpoint)
 
         return command.main(args=argv, prog_name='launcher', standalone_mode=False)

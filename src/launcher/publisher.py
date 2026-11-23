@@ -14,6 +14,7 @@ from bullet_drone.pose import resolve_pose
 from bullet_simulation_protocol.pose import PoseMessage, POSE_TOPIC
 from bullet_simulation_protocol.flight import FEEDBACK_TOPIC
 from bullet_simulation_protocol.scenario import TARGET_CONTACT_TOPIC
+from bullet_simulation_protocol.state import STATE_TOPIC, SimulationState
 from launcher.feedback import from_observation
 from bullet_drone.rendering.config import CameraSettings, number
 
@@ -24,6 +25,7 @@ STOP_TIMEOUT_S = 5
 DEFAULT_PUBLISH_RATES_HZ = dict(camera_info=1., profile=1., ground_truth=30.)
 GROUND_TRUTH_TOPIC = b'analysis/physics/ground_truth'
 IDLE_POSE_REFRESH_HZ = 1.
+SIMULATION_STATE_RATE_HZ = 2.
 SCHEDULE_TOLERANCE_S = 1e-12
 WORKER_POLL_S = 0.002
 
@@ -80,6 +82,7 @@ class RenderPublisher:
         self.latest_truth_published_ns = None
         self.observation_sequence = 0
         self.control_state = None
+        self.simulation_state = None
         self.contact_event = None
         self.latest_source = None
         self.sequence = 0
@@ -108,6 +111,14 @@ class RenderPublisher:
             self.contact_event = dict(schema_version=1, drone_id=state.drone_id,
                 target_id='red_truck', step_index=state.step_index,
                 simulation_time_s=state.simulation_time_s)
+
+    def clear_contact(self):
+        with self.snapshot_lock:
+            self.contact_event = None
+
+    def set_simulation_state(self, state: SimulationState):
+        with self.snapshot_lock:
+            self.simulation_state = state
 
     def consume(self, observation, *, source=None):
         if self.thread is None or self.stop.is_set():
@@ -154,6 +165,8 @@ class RenderPublisher:
                 next_profile = 0.0
                 next_idle_pose = 0.0
                 next_contact = 0.0
+                next_simulation_state = 0.0
+                last_simulation_revision = None
                 wire_sequence = 0
                 previous_state = None
                 feedback_sequence = -1
@@ -172,6 +185,7 @@ class RenderPublisher:
                         next_profile = time.monotonic() + 1 / self.rates['profile']
                     with self.snapshot_lock:
                         control_state = self.control_state
+                        simulation_state = self.simulation_state
                         latest = self.latest_pose
                         latest_host_capture_ns = self.latest_host_capture_ns
                         source = self.latest_source
@@ -179,6 +193,12 @@ class RenderPublisher:
                         truth_published_ns = self.latest_truth_published_ns
                         observation_sequence = self.observation_sequence
                         contact_event = self.contact_event
+                    if simulation_state is not None and (
+                            simulation_state.revision != last_simulation_revision
+                            or time.monotonic() >= next_simulation_state):
+                        io.publish(STATE_TOPIC, simulation_state)
+                        last_simulation_revision = simulation_state.revision
+                        next_simulation_state = time.monotonic() + 1 / SIMULATION_STATE_RATE_HZ
                     if contact_event is not None and time.monotonic() >= next_contact:
                         io.publish(TARGET_CONTACT_TOPIC, contact_event)
                         next_contact = time.monotonic() + 0.1
