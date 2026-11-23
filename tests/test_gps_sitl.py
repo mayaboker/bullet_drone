@@ -95,11 +95,11 @@ def test_live_gps_and_independent_barometer(tmp_path, mavlink):
                         return message.alt
                     assert abs(hud_altitude()) < 0.5
                 baseline = session.commands.read_altitude().altitude_m
-                position, velocity = (spawn[0] + 10., spawn[1], spawn[2]), (2., 0., 0.)
+                position, velocity = (spawn[0], spawn[1] - 10., spawn[2]), (0., -2., 0.)
                 settle()
                 east = read_gps()
                 assert east[3] > lon and east[5] == 200 and abs(east[6] - 900) <= 1
-                position, velocity = (spawn[0] + 10., spawn[1] + 10., spawn[2]), (0., 2., 0.)
+                position, velocity = (spawn[0] + 10., spawn[1] - 10., spawn[2]), (2., 0., 0.)
                 settle()
                 north = read_gps()
                 assert north[2] > lat and north[5] == 200 and north[6] <= 1

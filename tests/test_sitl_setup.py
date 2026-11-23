@@ -46,7 +46,7 @@ mkdir -p "$SITL_TEST_SOURCE/obj/main"
 if [ "$SITL_TEST_FAIL" = "marker" ]; then
     printf upstream > "$SITL_TEST_SOURCE/obj/main/betaflight_SITL.elf"
 else
-    printf BULLET_GPS_FDM_V1 > "$SITL_TEST_SOURCE/obj/main/betaflight_SITL.elf"
+    printf BULLET_GPS_FDM_V2 > "$SITL_TEST_SOURCE/obj/main/betaflight_SITL.elf"
 fi
 chmod +x "$SITL_TEST_SOURCE/obj/main/betaflight_SITL.elf"
 ''',
@@ -73,7 +73,7 @@ chmod +x "$SITL_TEST_SOURCE/obj/main/betaflight_SITL.elf"
         if gps:
             assert 'apply --reverse' in git_log.read_text()
     else:
-        assert installed.read_bytes() == b"BULLET_GPS_FDM_V1"
+        assert installed.read_bytes() == b"BULLET_GPS_FDM_V2"
         assert os.access(installed, os.X_OK)
         assert str(installed) in result.stdout
         assert result.returncode == 0, result.stderr

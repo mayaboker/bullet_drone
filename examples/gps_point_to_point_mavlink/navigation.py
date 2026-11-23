@@ -1,4 +1,4 @@
-"""GPS/local tangent conversion and straight-line guidance, metres in ENU."""
+"""GPS/local tangent conversion and straight-line guidance, metres in NWU."""
 from math import cos, degrees, hypot, isfinite, radians, sin, sqrt
 
 from bullet_drone.sensors.gps import WGS84_SEMI_MAJOR_AXIS_M, WGS84_ECCENTRICITY_SQUARED
@@ -32,7 +32,7 @@ class GeographicFrame:
         north = radians(latitude_deg - lat) * self.north_radius
         if hypot(east, north) > MAX_DISTANCE_M:
             raise ValueError('GPS route exceeds local 1 km model')
-        return east, north, altitude_m - alt
+        return north, -east, altitude_m - alt
 
 
 def line_velocity(start, end, measured):

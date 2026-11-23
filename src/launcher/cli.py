@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import click
+from bullet_simulation_protocol import validate_endpoint
+from bullet_simulation_protocol.state import DEFAULT_CONTROL_ENDPOINT
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -17,6 +19,7 @@ def _checkout_asset(relative_path: str) -> Path | None:
 
 DEFAULT_SITL_BINARY = _checkout_asset('bin/betaflight_mavlink_gps_SITL.elf')
 DEFAULT_SITL_PROFILE = _checkout_asset('configs/betaflight-mavlink.config')
+DEFAULT_SITL_GPS_PROFILE = _checkout_asset('configs/betaflight-mavlink-gps.config')
 DEFAULT_RENDER_CONFIG = _checkout_asset('external_render/configs/physics.json')
 DEFAULT_RENDERER = _checkout_asset('external_render/dist/linux-x86_64/render')
 
@@ -36,6 +39,8 @@ class Options:
     render_half: str | None = None
     isaac_headless: bool = False
     world: Path | None = None
+    gps: bool = False
+    simulation_control_endpoint: str = DEFAULT_CONTROL_ENDPOINT
 
 
 class CliParser:
@@ -44,8 +49,9 @@ class CliParser:
         @click.option('--sitl/--no-sitl', default=True, help='Start Betaflight SITL (external controller owns MSP).')
         @click.option('--render/--no-render', default=True, help='Start a renderer.')
         @click.option('--sitl-binary', type=click.Path(dir_okay=False, path_type=Path), default=DEFAULT_SITL_BINARY)
-        @click.option('--sitl-profile', type=click.Path(exists=True, dir_okay=False, path_type=Path),
-                      default=DEFAULT_SITL_PROFILE)
+        @click.option('--sitl-profile', type=click.Path(exists=True, dir_okay=False, path_type=Path))
+        @click.option('--gps/--no-gps', default=False,
+                      help='Enable Betaflight virtual GPS; --no-gps still sends test latitude/longitude in FDM.')
         @click.option('--render-config', type=click.Path(exists=True, dir_okay=False, path_type=Path),
                       default=DEFAULT_RENDER_CONFIG)
         @click.option('--renderer', type=click.Path(dir_okay=False, path_type=Path), default=DEFAULT_RENDERER)
@@ -60,9 +66,14 @@ class CliParser:
         @click.option('--isaac-headless', is_flag=True, help='Run Isaac Sim without a GUI window.')
         @click.option('--world', type=click.Path(exists=True, dir_okay=False, path_type=Path),
                       help='USD world file for Isaac renderer.')
-        def command(sitl, render, sitl_binary, sitl_profile, render_config, renderer, renderer_backend,
-                    physics_backend, target_scene, render_monitor, render_half, isaac_headless, world):
+        @click.option('--simulation-control-endpoint', default=DEFAULT_CONTROL_ENDPOINT,
+                      help='Loopback ZeroMQ simulation command endpoint.')
+        def command(sitl, render, sitl_binary, sitl_profile, gps, render_config, renderer, renderer_backend,
+                    physics_backend, target_scene, render_monitor, render_half, isaac_headless, world,
+                    simulation_control_endpoint):
             """Run a drone simulation with optional SITL and rendering."""
+            if sitl_profile is None:
+                sitl_profile = DEFAULT_SITL_GPS_PROFILE if gps else DEFAULT_SITL_PROFILE
             if target_scene and (not sitl or not render):
                 raise click.UsageError('--target-scene requires --sitl and --render')
             if render_half and not render_monitor:
@@ -77,7 +88,12 @@ class CliParser:
                 raise click.UsageError('--isaac-headless requires --renderer-backend isaac')
             if world and renderer_backend != 'isaac':
                 raise click.UsageError('--world requires --renderer-backend isaac')
+            try:
+                validate_endpoint(simulation_control_endpoint)
+            except ValueError as error:
+                raise click.UsageError(str(error)) from error
             return Options(sitl, render, sitl_binary, sitl_profile, render_config, renderer, renderer_backend,
-                           physics_backend, target_scene, render_monitor, render_half, isaac_headless, world)
+                           physics_backend, target_scene, render_monitor, render_half, isaac_headless, world,
+                           gps, simulation_control_endpoint)
 
         return command.main(args=argv, prog_name='launcher', standalone_mode=False)

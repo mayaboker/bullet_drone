@@ -9,3 +9,12 @@
 | [0005 tmux hover/land launch](0005-tmux-hover-launch.md) | Place the renderer in the top half of the tmuxp stack's monitor. | Implemented; focused and live checks passed | `8d99ee2620ed4de2b990b779fca17aa4650d7dee` (`bullet_drone`), `3651d5bfff7d1ac0b92a36252ab1bc5bd7c9ce44` (`bullet_ng`) |
 | [0006 View bbox MAVLink codec](0006-view-bbox-codec.md) | Share the validated V2_EXTENSION fid/bbox payload. | Implemented; focused and live checks passed | `f8bda7817b29fbcea5184c13c2f1562914b71b0d` |
 | [0007 Packaged simulation launcher](0007-packaged-launcher.md) | Move the persistent launcher into an installable `launcher` command. | Implemented; focused, wheel, and live checks passed | `94aba8064be722c11696a4808405b98524de118f` (bullet_drone), `712111a722f41c9e62425a2deb3c5b3d8d9be480` (bullet_ng), `6741a1c25f8496d61e0b21af1554229a52037b56` (bullet_app) |
+| [0008 SITL MAVLink shared boot clock](0008-sitl-mavlink-shared-clock.md) | Align TIMESYNC and ATTITUDE to one SITL clock for LOS acquisition. | Implemented; build and live target hit passed | `404d7b3` |
+| [0009 Workspace-owned Bullet App launch](0009-workspace-owned-app-launch.md) | Move the App wait-and-run helper into `bullet_ng` launch tooling. | Implemented; static and stubbed launch checks passed | `e4b1d1f` (`bullet_ng`), `c42106e` (`bullet_drone`) |
+| [0010 Launcher virtual GPS](0010-launcher-virtual-gps.md) | Enable opt-in virtual GPS for workspace SITL mission stacks. | Implemented; 39 simulator tests and config checks passed | Pending (no commit requested) |
+| [0011 GPS SITL barometer altitude](0011-gps-baro-altitude.md) | Use barometer-only altitude estimation in GPS SITL profiles. | Implemented; profile load passed, target-hit rerun still failed | Pending (no commit requested) |
+
+| [0012 NWU GPS frame](0012-nwu-gps-frame.md) | Align GPS and attitude world references. | Implemented; frame checks pass, live mission failures remain | Pending |
+| [0013 GPS coordinates in disabled FDM](0013-no-gps-fdm-coordinates.md) | Keep lat/lon in launcher FDM while Betaflight GPS stays disabled. | Implemented; 48 focused tests passed | Pending (no commit requested) |
+| [0014 Ground truth MCAP publication](0014-ground-truth-mcap.md) | Publish 30 Hz physics position and velocity for MCAP and FlightLens. | Implemented | Pending (no commit requested) |
+| [0015 Simulation control and state](0015-simulation-control-state.md) | Control launcher lifecycle over ZMQ and publish current state for View. | Pending | Pending |

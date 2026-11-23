@@ -50,6 +50,7 @@ library interfaces rather than reconstructing those missing records.
 
 - [Simulation I/O](../simulation/io.md): direct subsystem connections, topics, ports and endpoint ownership.
 - [Simulation launcher](../../src/launcher/): packaged `launcher` command with a PyBullet FDM loop, one SITL with UART2 MAVLink telemetry, optional renderer, and external MSP controller ownership.
+- [Launcher simulation control](launcher-simulation-control.md): View-facing Start, Stop, Reset requests, SITL reinitialization, and the state topic.
 
 - [CameraInfo and threaded ZeroMQ](camera-info-zmq.md): dataclass calibration, configured rates and transport ownership.
 

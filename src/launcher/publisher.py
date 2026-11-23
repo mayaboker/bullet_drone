@@ -14,6 +14,7 @@ from bullet_drone.pose import resolve_pose
 from bullet_simulation_protocol.pose import PoseMessage, POSE_TOPIC
 from bullet_simulation_protocol.flight import FEEDBACK_TOPIC
 from bullet_simulation_protocol.scenario import TARGET_CONTACT_TOPIC
+from bullet_simulation_protocol.state import STATE_TOPIC, SimulationState
 from launcher.feedback import from_observation
 from bullet_drone.rendering.config import CameraSettings, number
 
@@ -21,8 +22,10 @@ from bullet_drone.rendering.config import CameraSettings, number
 QUEUE_CAPACITY = 1
 START_TIMEOUT_S = 15
 STOP_TIMEOUT_S = 5
-DEFAULT_PUBLISH_RATES_HZ = dict(camera_info=1., profile=1.)
+DEFAULT_PUBLISH_RATES_HZ = dict(camera_info=1., profile=1., ground_truth=30.)
+GROUND_TRUTH_TOPIC = b'analysis/physics/ground_truth'
 IDLE_POSE_REFRESH_HZ = 1.
+SIMULATION_STATE_RATE_HZ = 2.
 SCHEDULE_TOLERANCE_S = 1e-12
 WORKER_POLL_S = 0.002
 
@@ -76,8 +79,10 @@ class RenderPublisher:
         self.latest_pose = None
         self.latest_host_capture_ns = None
         self.latest_observation = None
+        self.latest_truth_published_ns = None
         self.observation_sequence = 0
         self.control_state = None
+        self.simulation_state = None
         self.contact_event = None
         self.latest_source = None
         self.sequence = 0
@@ -107,6 +112,14 @@ class RenderPublisher:
                 target_id='red_truck', step_index=state.step_index,
                 simulation_time_s=state.simulation_time_s)
 
+    def clear_contact(self):
+        with self.snapshot_lock:
+            self.contact_event = None
+
+    def set_simulation_state(self, state: SimulationState):
+        with self.snapshot_lock:
+            self.simulation_state = state
+
     def consume(self, observation, *, source=None):
         if self.thread is None or self.stop.is_set():
             raise RuntimeError('publisher is not running')
@@ -116,6 +129,7 @@ class RenderPublisher:
         host_capture_ns = time.monotonic_ns()
         with self.snapshot_lock:
             self.latest_observation = observation
+            self.latest_truth_published_ns = time.time_ns()
             self.observation_sequence += 1
             self.latest_pose = state
             self.latest_host_capture_ns = host_capture_ns
@@ -151,9 +165,14 @@ class RenderPublisher:
                 next_profile = 0.0
                 next_idle_pose = 0.0
                 next_contact = 0.0
+                next_simulation_state = 0.0
+                last_simulation_revision = None
                 wire_sequence = 0
                 previous_state = None
                 feedback_sequence = -1
+                next_truth_time_s = 0.0
+                truth_episode = None
+                last_truth_step = None
                 self.ready.set()
                 while not self.stop.is_set():
                     if io.error:
@@ -166,12 +185,20 @@ class RenderPublisher:
                         next_profile = time.monotonic() + 1 / self.rates['profile']
                     with self.snapshot_lock:
                         control_state = self.control_state
+                        simulation_state = self.simulation_state
                         latest = self.latest_pose
                         latest_host_capture_ns = self.latest_host_capture_ns
                         source = self.latest_source
                         observation = self.latest_observation
+                        truth_published_ns = self.latest_truth_published_ns
                         observation_sequence = self.observation_sequence
                         contact_event = self.contact_event
+                    if simulation_state is not None and (
+                            simulation_state.revision != last_simulation_revision
+                            or time.monotonic() >= next_simulation_state):
+                        io.publish(STATE_TOPIC, simulation_state)
+                        last_simulation_revision = simulation_state.revision
+                        next_simulation_state = time.monotonic() + 1 / SIMULATION_STATE_RATE_HZ
                     if contact_event is not None and time.monotonic() >= next_contact:
                         io.publish(TARGET_CONTACT_TOPIC, contact_event)
                         next_contact = time.monotonic() + 0.1
@@ -179,6 +206,24 @@ class RenderPublisher:
                             and hasattr(observation, 'sensors')):
                         io.publish(FEEDBACK_TOPIC, from_observation(observation))
                         feedback_sequence = observation_sequence
+                    if observation is not None:
+                        truth = observation.ground_truth
+                        if truth.episode_id != truth_episode:
+                            truth_episode = truth.episode_id
+                            next_truth_time_s = 0.0
+                            last_truth_step = None
+                        if (truth.step_index != last_truth_step and
+                                truth.simulation_time_s + SCHEDULE_TOLERANCE_S >= next_truth_time_s):
+                            io.publish(GROUND_TRUTH_TOPIC, dict(
+                                schema_version=1, drone_id=truth.drone_id,
+                                episode_id=truth.episode_id, step_index=truth.step_index,
+                                simulation_time_s=truth.simulation_time_s,
+                                position_m=truth.position_m,
+                                linear_velocity_m_s=truth.linear_velocity_m_s),
+                                published_ns=truth_published_ns)
+                            last_truth_step = truth.step_index
+                            next_truth_time_s = (int((truth.simulation_time_s + SCHEDULE_TOLERANCE_S)
+                                                     * self.rates['ground_truth']) + 1) / self.rates['ground_truth']
                     now = time.monotonic()
                     changed = control_state != previous_state
                     previous_state = control_state

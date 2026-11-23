@@ -73,9 +73,9 @@ def test_sensor_origin_motion_and_reset():
     # Independent tabulated lengths at the equator: degrees per metre.
     moved = sensor.sample(state(1, (100., 100., 15.)))
     assert moved.latitude_deg == pytest.approx(0.000904369477, abs=1e-12)
-    assert moved.longitude_deg == pytest.approx(0.000898315284, abs=1e-12)
+    assert moved.longitude_deg == pytest.approx(-0.000898315284, abs=1e-12)
     assert moved.altitude_m == 115.
-    assert moved.velocity_enu_m_s == (1., 2., 3.)
+    assert moved.velocity_enu_m_s == (-2., 1., 3.)
     assert (moved.episode_id, moved.step_index, moved.simulation_time_s) == ('episode', 1, 1 / 240)
     with pytest.raises(FrozenInstanceError):
         moved.altitude_m = 0.
@@ -86,12 +86,12 @@ def test_sensor_origin_motion_and_reset():
         sensor.sample(next_episode)
     reset = sensor.reset(next_episode)
     assert reset.episode_id == 'next' and reset.altitude_m == 103.
-    assert reset.latitude_deg > 0 and reset.longitude_deg > 0
+    assert reset.latitude_deg > 0 and reset.longitude_deg < 0
 
 
 def test_dateline_and_distance_limit():
     sensor = GpsSensor(replace(ORIGIN, origin_longitude_deg=179.9999))
-    assert sensor.reset(state(position=(100., 0., 0.))).longitude_deg < -179.99
+    assert sensor.reset(state(position=(0., -100., 0.))).longitude_deg < -179.99
     with pytest.raises(ValueError, match='1 km'):
         sensor.sample(state(1, (1001., 0., 0.)))
     for position in ((float('nan'), 0., 0.), (0., 0., float('inf'))):
@@ -120,7 +120,7 @@ def test_gps_fdm_layout_and_independent_pressure():
     packet = pack_fdm(sample, gps_enabled=True)
     assert len(packet) == 144
     values = struct.unpack('<18d', packet)
-    assert values[11:14] == (1., 2., 3.)
+    assert values[11:14] == (-2., 1., 3.)
     assert values[14:17] == (0., 0., 101.)
     assert values[17] == 100000.
     changed = replace(sample, sensors=replace(sample.sensors,
@@ -138,6 +138,19 @@ def test_gps_fdm_layout_and_independent_pressure():
             pack_fdm(replace(sample, sensors=replace(sample.sensors, gps=gps)), gps_enabled=True)
     with pytest.raises(ValueError, match='explicitly enabled'):
         pack_fdm(sample)
+
+
+def test_gps_coordinates_without_firmware_gps_keep_barometer_altitude():
+    sample = observation()
+    sample = replace(sample, sensors=replace(sample.sensors,
+                                             gps=replace(sample.sensors.gps, latitude_deg=32., longitude_deg=35.)))
+    values = struct.unpack('<18d', pack_fdm(sample, gps_coordinates_only=True))
+    assert values[11:14] == (-2., 1., 3.)
+    assert values[14:16] == (35., 32.)
+    assert values[16] != sample.sensors.gps.altitude_m
+    assert values[17] == sample.sensors.barometer.pressure_pa
+    with pytest.raises(ValueError, match='mutually exclusive'):
+        pack_fdm(sample, gps_enabled=True, gps_coordinates_only=True)
 
 
 @pytest.mark.parametrize('gps', [False, True])
@@ -176,3 +189,21 @@ def test_gps_example_cli():
     assert not CliParser().parse([]).gps_settings.enabled
     with pytest.raises(click.BadParameter):
         CliParser().parse(['--gps-origin', '90', '35', '100'])
+
+
+@pytest.mark.parametrize('world,enu', [((2.,0.,0.),(0.,2.,0.)), ((-2.,0.,0.),(0.,-2.,0.)), ((0.,2.,0.),(-2.,0.,0.)), ((0.,-2.,0.),(2.,0.,0.)), ((0.,0.,2.),(0.,0.,2.))])
+def test_nwu_cardinal_vectors(world, enu):
+    reading = GpsSensor(ORIGIN).reset(replace(state(position=world), linear_velocity_m_s=world))
+    assert reading.velocity_enu_m_s == enu
+    assert (reading.latitude_deg > 0) == (world[0] > 0)
+    assert (reading.longitude_deg > 0) == (world[1] < 0)
+
+
+@pytest.mark.parametrize('enabled', [False, True])
+def test_legacy_gps_firmware_requires_rebuild(tmp_path, enabled):
+    binary = tmp_path / 'old-sitl'
+    binary.write_bytes(b'BULLET_GPS_FDM_V1')
+    profile = tmp_path / 'profile'
+    profile.write_text('feature GPS\nset gps_provider = VIRTUAL\n')
+    with pytest.raises(ValueError, match='Rebuild'):
+        validate_gps_firmware(binary, profile, gps_enabled=enabled)

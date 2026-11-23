@@ -38,6 +38,45 @@ def test_launcher_uses_mavlink_profile_and_reserves_uart2(monkeypatch):
         launcher.run(Options(render=False))
     assert captured['profile_path'] == Options().sitl_profile
     assert captured['extra_ports'] == (5762,)
+    assert captured['gps_enabled'] is False
+
+
+def test_launcher_gps_selects_matching_profile_and_sensor():
+    from launcher.cli import DEFAULT_SITL_GPS_PROFILE
+
+    options = CliParser().parse(['--gps', '--no-render'])
+    assert options.gps is True
+    assert options.sitl_profile == DEFAULT_SITL_GPS_PROFILE
+    config = launcher._simulation_config(options)
+    assert config.sensors.gps.enabled is True
+    assert config.sensors.gps.origin_altitude_m == launcher.GPS_ORIGIN_ALTITUDE_M
+
+
+def test_launcher_no_gps_keeps_coordinates_for_fdm():
+    options = CliParser().parse(['--no-gps', '--no-render'])
+    assert options.gps is False
+    assert launcher._simulation_config(options).sensors.gps.enabled is True
+
+
+def test_launcher_passes_gps_flag_to_sitl_session(monkeypatch):
+    captured = {}
+
+    class Session:
+        def __init__(self, binary, **kwargs):
+            captured.update(kwargs)
+
+        def __enter__(self):
+            raise RuntimeError('Stop after SITL setup')
+
+        def __exit__(self, *args):
+            pass
+
+    monkeypatch.setattr(launcher, 'SitlSession', Session)
+    options = CliParser().parse(['--gps', '--no-render'])
+    with pytest.raises(RuntimeError, match='Stop after SITL setup'):
+        launcher.run(options)
+    assert captured['gps_enabled'] is True
+    assert captured['profile_path'] == options.sitl_profile
 
 
 def test_launcher_requires_external_paths_when_checkout_assets_are_unavailable(monkeypatch):
@@ -66,3 +105,92 @@ def test_launcher_accepts_explicit_external_assets(tmp_path, monkeypatch):
         '--renderer', str(paths[2]), '--render-config', str(paths[3])])
     assert (options.sitl_binary, options.sitl_profile, options.renderer,
             options.render_config) == tuple(paths)
+
+
+def test_launcher_reset_restarts_owned_sitl_and_backend(monkeypatch):
+    from types import SimpleNamespace
+
+    events = []
+    observation = SimpleNamespace(ground_truth=SimpleNamespace(
+        drone_id='drone_1', episode_id='new'))
+
+    class Session:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            events.append('sitl_start')
+            return self
+
+        def __exit__(self, *args):
+            events.append('sitl_close')
+
+        def check_running(self):
+            pass
+
+    class Physics:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def close(self):
+            pass
+
+    class Environment:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def reset(self):
+            events.append('physics_reset')
+            return observation
+
+        def hold(self):
+            return observation
+
+        def close(self):
+            pass
+
+    class Backend:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def reset(self, current):
+            events.append('backend_reset')
+
+        def command(self, current):
+            return None
+
+        def close(self):
+            events.append('backend_close')
+
+    class Control:
+        def __init__(self, endpoint, current, on_state):
+            self.state = 'running'
+            self.calls = 0
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def update(self, current, reset):
+            self.calls += 1
+            if self.calls == 1:
+                self.state = 'stopped_reset_required'
+                current = reset()
+                self.state = 'stopped_ready'
+                return current
+            raise StopIteration
+
+    monkeypatch.setattr(launcher, 'SitlSession', Session)
+    monkeypatch.setattr(launcher, 'PyBulletPhysics', Physics)
+    monkeypatch.setattr(launcher, 'DroneEnvironment', Environment)
+    monkeypatch.setattr(launcher, 'BetaflightBackend', Backend)
+    monkeypatch.setattr(launcher, 'SimulationControl', Control)
+    monkeypatch.setattr(launcher, '_wait_sitl_ready', lambda session: None)
+    monkeypatch.setattr(launcher, 'load_racer_parameters', lambda: object())
+    with pytest.raises(StopIteration):
+        launcher.run(Options(render=False))
+    assert events == ['sitl_start', 'physics_reset', 'backend_reset',
+                      'backend_close', 'sitl_close', 'physics_reset',
+                      'sitl_start', 'backend_reset', 'backend_close', 'sitl_close']

@@ -249,13 +249,44 @@ def test_camera_info_publication_rates_are_configurable(tmp_path):
     value['publish_rates_hz'] = {'camera_info': 5, 'profile': 2}
     path.write_text(json.dumps(value))
     configured = RenderPublisher(path)
-    assert configured.rates == {'camera_info': 5, 'profile': 2}
+    assert configured.rates == {'camera_info': 5, 'profile': 2, 'ground_truth': 30.}
     assert configured.config['fps'] == 30
     for rates in ({'camera_info':0}, {'unknown':1}, {'camera_info':float('nan')}):
         value['publish_rates_hz'] = rates
         path.write_text(json.dumps(value))
         with pytest.raises((ValueError, ConfigurationError)):
             RenderPublisher(path)
+
+
+def test_ground_truth_topic_has_unix_timestamp_and_physics_vectors(tmp_path):
+    import struct
+    import zmq
+    profile = tcp_profile()
+    (tmp_path/'transport.json').write_text(json.dumps(profile))
+    output = publisher(tmp_path)
+    state = DroneState('drone_1', 8, 8 / 240, (1., -2., 3.), (0., 0., 0., 1.),
+                       (4., -5., 6.), (0., 0., 0.))
+    with zmq.Context() as context, context.socket(zmq.SUB) as subscriber:
+        subscriber.setsockopt(zmq.LINGER, 0)
+        subscriber.setsockopt(zmq.SUBSCRIBE, b'analysis/physics/ground_truth')
+        subscriber.setsockopt(zmq.SUBSCRIBE, b'camera/front/camera_info')
+        subscriber.connect(profile['telemetry_endpoint'])
+        output.start()
+        try:
+            assert subscriber.poll(2000)
+            assert subscriber.recv_multipart()[0] == b'camera/front/camera_info'
+            output.consume(SimpleNamespace(ground_truth=state))
+            assert subscriber.poll(2000)
+            topic, header, payload = subscriber.recv_multipart()
+            assert topic == b'analysis/physics/ground_truth'
+            assert len(header) == 8
+            assert abs(struct.unpack('<Q', header)[0] - time.time_ns()) < 3_000_000_000
+            value = json.loads(payload)
+            assert value['position_m'] == [1., -2., 3.]
+            assert value['linear_velocity_m_s'] == [4., -5., 6.]
+            assert value['simulation_time_s'] == 8 / 240
+        finally:
+            output.close()
 
 
 def test_camera_info_rate_does_not_change_pose_capture_rate(tmp_path):

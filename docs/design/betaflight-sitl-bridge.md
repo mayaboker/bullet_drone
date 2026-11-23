@@ -68,11 +68,11 @@ In the table, `state = observation.ground_truth`,
 | 8 | 64 | `imu_orientation_quat[1]` | `state.orientation_xyzw[0]` → `x` | dimensionless |
 | 9 | 72 | `imu_orientation_quat[2]` | `-state.orientation_xyzw[1]` → `-y` | dimensionless |
 | 10 | 80 | `imu_orientation_quat[3]` | `-state.orientation_xyzw[2]` → `-z` | dimensionless |
-| 11 | 88 | `velocity_xyz[0]` | Truth X, or GPS east velocity when enabled | m/s |
-| 12 | 96 | `velocity_xyz[1]` | Truth Y, or GPS north velocity when enabled | m/s |
+| 11 | 88 | `velocity_xyz[0]` | Negative truth Y (east), or GPS east velocity | m/s |
+| 12 | 96 | `velocity_xyz[1]` | Truth X (north), or GPS north velocity | m/s |
 | 13 | 104 | `velocity_xyz[2]` | Truth Z, or GPS up velocity when enabled | m/s |
-| 14 | 112 | `position_xyz[0]` | `0.0`, or GPS longitude when enabled | degrees |
-| 15 | 120 | `position_xyz[1]` | `0.0`, or GPS latitude when enabled | degrees |
+| 14 | 112 | `position_xyz[0]` | GPS longitude when sampled; otherwise `0.0` | degrees |
+| 15 | 120 | `position_xyz[1]` | GPS latitude when sampled; otherwise `0.0` | degrees |
 | 16 | 128 | `position_xyz[2]` | `h_wire` from pressure, or GPS MSL altitude when enabled | m |
 | 17 | 136 | `pressure` | `barometer.pressure_pa` | Pa |
 
@@ -82,7 +82,7 @@ Simulation body axes are **FLU: X forward, Y left, Z up**. The world is Z-up;
 vectors in `state.linear_velocity_m_s` stay in the simulation world frame.
 The Gazebo protocol interprets velocity as ENU when virtual GPS is enabled, but
 the default GPS-disabled bridge supplies zero longitude/latitude placeholders.
-The opt-in GPS path defines X east, Y north and transmits geographic coordinates.
+The opt-in GPS path defines X north, Y west and transmits geographic coordinates.
 
 The accelerometer measures specific force `Rᵀ(a_world − gravity_world)`, not
 world acceleration. The gyro measures body angular rate. The wire sign changes
@@ -93,7 +93,7 @@ accelerometer convention, not a generic FLU-to-FRD vector rotation.
 | --- | --- | --- |
 | Gyro | `(gx, -gy, -gz)` | Helper maps `(rx, ry, rz)` to `(rx, -ry, rz)`, then multiplies by `16.4 × 180/π` and clips to signed counts `[-32767, 32767]`. Combined signs are `(gx, gy, -gz)` before scaling. |
 | Specific force | `(-fx, -fy, -fz)` | Negates again, multiplies by `256 / 9.80665`, clips to `[-32767, 32767]` and converts to integer device counts. |
-| Orientation | Input XYZW → wire `(w, x, -y, -z)` | Gazebo branch undoes the Y/Z signs and rotates the world ENU → NWU by +90° about Z for the quaternion consumers. |
+| Orientation | Input XYZW → wire `(w, x, -y, -z)` | Bullet V2 branch undoes the Y/Z signs directly into NWU. The upstream Gazebo path retains its own world rotation. |
 
 A level supported/hovering vehicle with zero noise reports approximately
 `f_body = (0, 0, +9.81)` m/s². Its FDM acceleration is `(0, 0, -9.81)`, and the
@@ -258,8 +258,17 @@ reversed only the known former patch before rebuilding.
 | Mixer / tuning | Existing quad-X profile and gains | Preserve motor order and controller settings. |
 
 Field 17 remains populated for wire-layout compatibility; Gazebo mode ignores it.
-There is no patched fallback or direct sensor-altitude option. MAVLink changes
-are deferred; this bridge continues to use the existing MSP application path.
+There is no patched fallback or direct sensor-altitude option. The GPS SITL patch
+also derives `millis64()` from `micros64()` and answers MAVLink TIMESYNC with
+64-bit `micros64()`. ATTITUDE `time_boot_ms` and TIMESYNC `tc1` therefore use the
+same scaled boot clock, without a 32-bit microsecond wrap. MSP remains the RC
+control path.
+
+After rebuilding, restart the target stack to load the new executable. In a
+10-second live check, 429 mapped ATTITUDE samples were 5.8–26.8 ms old with no
+future timestamps; an automatic target mission then reached LOS commit and
+reported a hit with zero ATTITUDE mapping rejections. See
+[plan 0008](../../plan/0008-sitl-mavlink-shared-clock.md).
 
 Verification results are recorded in [plan 0054](../../plan/0054-remove-sitl-patch.md).
 Live upstream checks confirmed that a 100 Pa measured-pressure drop changed MSP
@@ -320,10 +329,10 @@ patch on success or failure. Dirty sources are refused; installation is atomic
 and failed builds preserve the previously installed executable. The patch is
 pinned to the same upstream commit as the default build.
 
-The change keeps Gazebo IMU/attitude conventions, accepts GPS coordinates without
+The V2 change keeps body IMU conventions and decodes Bullet attitude directly into NWU. It accepts GPS coordinates without
 horizontal mirroring, and takes barometer pressure from field 17 independently
 of GPS altitude. It does not change the 144-byte packet layout. The binary emits
-and contains `BULLET_GPS_FDM_V1` as its compatibility marker.
+and contains `BULLET_GPS_FDM_V2` as its compatibility marker.
 
 Pair enabled GPS with `configs/betaflight-gps.config` or
 `configs/betaflight-mavlink-gps.config` (virtual receiver), the corresponding GPS
@@ -335,8 +344,19 @@ users who own an external firmware process must call `validate_gps_firmware`
 from `bullet_drone.betaflight.firmware` before launching it; UDP FDM has no
 capability negotiation and cannot identify a separately launched binary.
 
-With GPS disabled, the shared GPS-capable binary uses the GPS-disabled profile
-and FDM encoder: position X/Y are zero, Z encodes barometric altitude, and the
+Both GPS profiles set `altitude_source = BARO_ONLY`. Betaflight uses the
+barometer for its altitude estimate while GPS position and raw GPS telemetry
+remain available. This setting does not disable GPS course corrections to yaw.
+
+The persistent `launcher` keeps GPS disabled by default. Its `--gps` option selects
+the matching virtual-GPS profile, constructs a `GpsSensor` at a 0° latitude,
+0° longitude, 100 m MSL origin, validates the GPS-capable SITL binary, and sends
+GPS-enabled FDM packets. The workspace mission stacks use this option to provide
+firmware GPS measurements for Bullet App's MAVLink recording topics.
+
+With Betaflight GPS disabled, the launcher samples synthetic GPS coordinates and
+uses `gps_coordinates_only=True`: position X/Y carry longitude/latitude for testing,
+Z encodes barometric altitude, and the
 patched firmware reads pressure directly from field 17. An unpatched binary also
 remains compatible with the GPS-disabled profile and derives pressure from Z.
 With GPS enabled, position is `[longitude_deg, latitude_deg, altitude_MSL_m]`,

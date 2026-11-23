@@ -23,6 +23,7 @@ name = "bullet-drone"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "bullet-simulation-protocol" },
     { name = "click" },
     { name = "loguru" },
     { name = "pybullet" },
@@ -35,8 +36,6 @@ mavlink = [
 ]
 render = [
     { name = "bullet-image-transport" },
-    { name = "bullet-simulation-protocol" },
-    { name = "pyzmq" },
 ]
 
 [package.dev-dependencies]
@@ -48,13 +47,12 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "bullet-image-transport", marker = "extra == 'render'", editable = "libs/bullet_image_transport" },
-    { name = "bullet-simulation-protocol", marker = "extra == 'render'", editable = "libs/bullet_simulation_protocol" },
+    { name = "bullet-simulation-protocol", editable = "libs/bullet_simulation_protocol" },
     { name = "click", specifier = ">=8.5.0" },
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "pybullet", specifier = ">=3.2.7" },
     { name = "pymavlink", marker = "extra == 'mavlink'", specifier = ">=2.4,<3" },
     { name = "pyyaml", specifier = ">=6.0.3" },
-    { name = "pyzmq", marker = "extra == 'render'", specifier = ">=27,<28" },
 ]
 provides-extras = ["render", "sitl", "mavlink"]
 
