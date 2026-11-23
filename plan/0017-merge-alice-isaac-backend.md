@@ -24,4 +24,4 @@ Isaac remains optional. Its target contact remains unimplemented as described in
 
 ## Status
 
-Implemented. Implementation commit: Pending.
+Implemented. Implementation commit: `ddb00b3`.
