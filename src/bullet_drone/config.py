@@ -84,6 +84,7 @@ class DroneSettings:
     initial_position_m: Vector3
     drone_id: str = DEFAULT_DRONE_ID
     urdf: str = "racer"
+    initial_yaw_rad: float = 0.0
 
     def __post_init__(self) -> None:
         if (not isinstance(self.drone_id, str) or not self.drone_id.strip()
@@ -95,6 +96,7 @@ class DroneSettings:
             raise ConfigurationError("drone.urdf must be a built-in name or a nonblank URDF path")
         object.__setattr__(self, "mass_kg", _number(self.mass_kg, "drone.mass_kg", positive=True))
         object.__setattr__(self, "initial_position_m", _vector(self.initial_position_m, "drone.initial_position_m"))
+        object.__setattr__(self, "initial_yaw_rad", _number(self.initial_yaw_rad, "drone.initial_yaw_rad"))
 
 
 @dataclass(frozen=True, slots=True)
@@ -537,7 +539,8 @@ class YamlConfigLoader:
             root["simulation"], "simulation",
             {"timestep_s", "max_steps", "gravity_m_s2"}, {"gui"},
         )
-        drone = dict(_mapping(root["drone"], "drone", {"mass_kg", "initial_position_m"}, {"drone_id", "urdf"}))
+        drone = dict(_mapping(root["drone"], "drone", {"mass_kg", "initial_position_m"},
+                              {"drone_id", "urdf", "initial_yaw_rad"}))
         urdf = drone.get("urdf", "racer")
         if isinstance(urdf, str) and urdf not in ("racer", "heavy_quad"):
             urdf_path = Path(urdf)

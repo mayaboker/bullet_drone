@@ -11,6 +11,8 @@ drone:
   mass_kg: 1.0
   # Required finite world XYZ spawn position in metres, Z up.
   initial_position_m: [0.0, 0.0, 1.0]
+  # Optional initial yaw in radians around world Z; default 0 faces world +X.
+  initial_yaw_rad: 0.0
 ```
 
 `DroneSettings.drone_id` defaults to `drone_1` when omitted, preserving existing

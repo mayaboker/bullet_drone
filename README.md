@@ -458,6 +458,10 @@ red-truck collision body aligned to the packaged Godot scene. On confirmed
 drone contact, the launcher publishes `simulation/drone_1/target_contact` on
 the existing renderer telemetry endpoint (default TCP 5555). Bullet App uses
 that event only; LOS guidance uses Betaflight MAVLink and `bullet_visual` bboxes.
+The target-hit workspace launcher reads `launch/target_hit.scene.yaml` from the
+workspace through `--target-spawn-config`. Its `initial_position_m` sets the
+drone's world XYZ spawn, and `initial_yaw_deg` rotates the drone at that
+position around world Z. The workspace file keeps X=0, Y=0 and sets yaw=90°.
 The workspace task **Bullet: Run target scene (SITL + renderer + visual)**
 starts the launcher and detector together.
 

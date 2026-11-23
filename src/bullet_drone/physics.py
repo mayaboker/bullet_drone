@@ -4,7 +4,7 @@ import importlib
 from importlib.resources import as_file
 import os
 import sys
-from math import sqrt
+from math import cos, sin, sqrt
 from pathlib import Path
 from uuid import uuid4
 
@@ -94,10 +94,11 @@ class PyBulletPhysics:
                                                        basePosition=[0, 0, 0], physicsClientId=client)
             # Load the selected packaged or external vehicle URDF.
             with as_file(vehicle_urdf_path(self._config.drone.urdf)) as urdf:
+                half_yaw = self._config.drone.initial_yaw_rad / 2
                 self._body = p.loadURDF(
                     str(urdf),
                     basePosition=self._config.drone.initial_position_m,
-                    baseOrientation=[0, 0, 0, 1],
+                    baseOrientation=[0, 0, sin(half_yaw), cos(half_yaw)],
                     flags=p.URDF_USE_INERTIA_FROM_FILE, physicsClientId=client,
                 )
             # Reserve a collision group for this drone so read-only rays skip every link.

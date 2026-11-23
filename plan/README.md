@@ -18,3 +18,4 @@
 | [0013 GPS coordinates in disabled FDM](0013-no-gps-fdm-coordinates.md) | Keep lat/lon in launcher FDM while Betaflight GPS stays disabled. | Implemented; 48 focused tests passed | Pending (no commit requested) |
 | [0014 Ground truth MCAP publication](0014-ground-truth-mcap.md) | Publish 30 Hz physics position and velocity for MCAP and FlightLens. | Implemented | Pending (no commit requested) |
 | [0015 Simulation control and state](0015-simulation-control-state.md) | Control launcher lifecycle over ZMQ and publish current state for View. | Pending | Pending |
+| [0016 Configure target-scene starting yaw](0016-target-scene-start-yaw.md) | Keep the drone at the origin while configuring its initial orientation in YAML. | Implemented; 60 focused tests and live startup passed | Pending (no commit requested) |

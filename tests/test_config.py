@@ -30,6 +30,15 @@ def test_config_loader(tmp_path):
     assert not hasattr(config, 'telemetry')
 
 
+def test_initial_yaw_is_optional_and_validated(tmp_path):
+    data = valid_data()
+    data['drone']['initial_yaw_rad'] = 1.5
+    assert YamlConfigLoader().load(write_config(tmp_path, data)).drone.initial_yaw_rad == 1.5
+    data['drone']['initial_yaw_rad'] = float('nan')
+    with pytest.raises(ConfigurationError, match='initial_yaw_rad'):
+        YamlConfigLoader().load(write_config(tmp_path, data))
+
+
 def test_removed_telemetry_yaml_section_is_rejected(tmp_path):
     data = valid_data()
     data['telemetry'] = {'sensors': True}

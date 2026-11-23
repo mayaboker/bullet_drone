@@ -10,6 +10,8 @@ Actions are `start`, `stop`, and `reset`. Replies are `{"success":true}` or `{"s
 
 The launcher starts in `running`. Stop changes to `stopped_reset_required`; the vehicle remains fixed while simulation time, sensor sampling, and SITL FDM input continue. Start requires `stopped_ready`. Reset is accepted only while stopped, changes to `resetting`, restarts physics and sensors, and, in SITL mode, closes and restarts the owned Betaflight process and FDM bridge. It waits for MSP and MAVLink TCP listeners and a fresh renderer image before returning success, then enters `stopped_ready`. Failure enters `error`; Reset may be retried. Reset clears the previous target-contact event. In `--no-sitl` mode it resets physics without firmware.
 
+For `--target-scene`, `--target-spawn-config PATH` reads `initial_position_m` and `initial_yaw_deg` from YAML. Position is world XYZ metres; yaw rotates body X counterclockwise from world +X around world Z. Reset restores both values. Without a file, the launcher uses `(0, 0, 0.015)` and zero yaw.
+
 With rendering enabled, the launcher publishes `simulation/drone_1/state` on the renderer telemetry PUB endpoint (`tcp://127.0.0.1:5555` by default). The two-frame message contains the topic and JSON payload:
 
 ```json

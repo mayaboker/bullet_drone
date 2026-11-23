@@ -1,11 +1,30 @@
 from launcher.cli import CliParser, Options
 from launcher import main as launcher
+from bullet_drone.config import ConfigurationError
 import click
 import pytest
 
 
 def test_launcher_defaults_to_sitl_and_render():
     assert CliParser().parse([]) == Options()
+
+
+def test_target_spawn_config_rotates_at_original_position(tmp_path):
+    path = tmp_path / 'target.yaml'
+    path.write_text('initial_position_m: [0, 0, 0.015]\ninitial_yaw_deg: 90\n')
+    options = CliParser().parse(['--target-scene', '--target-spawn-config', str(path)])
+    config = launcher._simulation_config(options)
+    assert config.drone.initial_position_m == launcher.INITIAL_POSITION_M
+    assert config.drone.initial_yaw_rad == pytest.approx(1.5707963267948966)
+
+
+def test_target_spawn_config_rejects_bad_yaw_and_non_target_scene(tmp_path):
+    path = tmp_path / 'target.yaml'
+    path.write_text('initial_position_m: [0, 0, 0.015]\ninitial_yaw_deg: nan\n')
+    with pytest.raises(ConfigurationError, match='initial_yaw_deg'):
+        launcher._simulation_config(Options(target_scene=True, target_spawn_config=path))
+    with pytest.raises(click.UsageError, match='--target-scene'):
+        CliParser().parse(['--target-spawn-config', str(path)])
 
 
 def test_launcher_can_disable_either_process():

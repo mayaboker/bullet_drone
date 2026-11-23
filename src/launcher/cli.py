@@ -33,6 +33,7 @@ class Options:
     render_config: Path | None = DEFAULT_RENDER_CONFIG
     renderer: Path | None = DEFAULT_RENDERER
     target_scene: bool = False
+    target_spawn_config: Path | None = None
     render_monitor: str | None = None
     render_half: str | None = None
     gps: bool = False
@@ -52,18 +53,22 @@ class CliParser:
                       default=DEFAULT_RENDER_CONFIG)
         @click.option('--renderer', type=click.Path(dir_okay=False, path_type=Path), default=DEFAULT_RENDERER)
         @click.option('--target-scene', is_flag=True, help='Enable the red-truck physics collider and contact event.')
+        @click.option('--target-spawn-config', type=click.Path(exists=True, dir_okay=False, path_type=Path),
+                      help='YAML initial position and yaw for the target-scene drone.')
         @click.option('--render-monitor', help='XRandR monitor name for the Godot window (e.g. DP-1-0).')
         @click.option('--render-half', type=click.Choice(['top', 'bottom']),
                       help='Use the top or bottom half of --render-monitor.')
         @click.option('--simulation-control-endpoint', default=DEFAULT_CONTROL_ENDPOINT,
                       help='Loopback ZeroMQ simulation command endpoint.')
         def command(sitl, render, sitl_binary, sitl_profile, gps, render_config, renderer, target_scene,
-                    render_monitor, render_half, simulation_control_endpoint):
+                    target_spawn_config, render_monitor, render_half, simulation_control_endpoint):
             """Run a persistent PyBullet simulation with optional SITL and rendering."""
             if sitl_profile is None:
                 sitl_profile = DEFAULT_SITL_GPS_PROFILE if gps else DEFAULT_SITL_PROFILE
             if target_scene and (not sitl or not render):
                 raise click.UsageError('--target-scene requires --sitl and --render')
+            if target_spawn_config is not None and not target_scene:
+                raise click.UsageError('--target-spawn-config requires --target-scene')
             if render_half and not render_monitor:
                 raise click.UsageError('--render-half requires --render-monitor')
             if sitl and (sitl_binary is None or sitl_profile is None):
@@ -74,7 +79,10 @@ class CliParser:
                 validate_endpoint(simulation_control_endpoint)
             except ValueError as error:
                 raise click.UsageError(str(error)) from error
-            return Options(sitl, render, sitl_binary, sitl_profile, render_config, renderer, target_scene,
-                           render_monitor, render_half, gps, simulation_control_endpoint)
+            return Options(sitl=sitl, render=render, sitl_binary=sitl_binary, sitl_profile=sitl_profile,
+                           render_config=render_config, renderer=renderer, target_scene=target_scene,
+                           target_spawn_config=target_spawn_config, render_monitor=render_monitor,
+                           render_half=render_half, gps=gps,
+                           simulation_control_endpoint=simulation_control_endpoint)
 
         return command.main(args=argv, prog_name='launcher', standalone_mode=False)

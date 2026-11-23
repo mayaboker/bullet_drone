@@ -21,6 +21,7 @@ from bullet_drone.vehicle import load_racer_parameters
 from launcher.cli import CliParser
 from launcher.sitl import SitlSession
 from launcher.control import SimulationControl
+from launcher.target_spawn import load_target_spawn
 
 
 RATE_HZ = 240
@@ -42,9 +43,12 @@ def _simulation_config(options):
     """Build matching physics and virtual-GPS sensor settings for the launcher."""
     gps = GpsSettings(True, GPS_ORIGIN_LATITUDE_DEG, GPS_ORIGIN_LONGITUDE_DEG,
                       GPS_ORIGIN_ALTITUDE_M) if options.sitl or options.gps else GpsSettings()
+    initial_position, initial_yaw = (load_target_spawn(options.target_spawn_config)
+                                     if options.target_scene and options.target_spawn_config is not None
+                                     else (INITIAL_POSITION_M, 0.0))
     return SimulationConfig(SimulationSettings(TIMESTEP_S, MAX_SIMULATION_STEPS,
                                                GRAVITY_VECTOR_M_S2, gui=False),
-                            DroneSettings(1.0, INITIAL_POSITION_M),
+                            DroneSettings(1.0, initial_position, initial_yaw_rad=initial_yaw),
                             control=ControlSettings('betaflight' if options.sitl else 'internal'),
                             sensors=SensorsSettings(gps=gps))
 
