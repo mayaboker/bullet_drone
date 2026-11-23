@@ -1,0 +1,47 @@
+# Release Log — alice branch (changes from 0.1-alpha)
+
+## bullet_drone
+
+2 commits, 9 files changed, +724 / -18 lines.
+
+### New files
+
+- `src/bullet_drone/isaac_physics.py` (388 lines)
+  Isaac PhysX physics backend. Mirrors PyBulletPhysics interface (reset, step,
+  hold, close, raycasting). Lazy-inits a shared headless SimulationApp, builds
+  a USD stage with physics scene, ground plane, and rigid-body drone. Applies
+  body-frame forces rotated to world frame via quaternion. Reads state from USD
+  prim attributes. target_contact/terrain_contact stubbed to False.
+
+- `src/launcher/isaac_renderer.py` (136 lines)
+  Isaac Sim renderer process manager. Launches python.sh with the
+  bullet_render isaac/main.py script. Manages ZMQ image transport and
+  shared-memory frame reading. Waits for first rendered frame before
+  declaring ready.
+
+- `src/launcher/__main__.py` (3 lines)
+  Enables `python -m launcher` entry point.
+
+- `tools/isaacSimKillAll.bash`
+  Kill script for all Isaac stack processes (Isaac Sim, SITL, bullet_visual,
+  launcher).
+
+### Modified files
+
+- `src/launcher/cli.py`
+  Added CLI options: --renderer-backend (godot|isaac), --physics-backend
+  (pybullet|isaac), --isaac-headless, --world.
+
+- `src/launcher/main.py`
+  Conditional import of IsaacRenderer/IsaacPhysics based on backend choice.
+
+- `tools/run_target_scene.sh`
+  Added --isaac, --isaac-physics, --isaac-headless, --world flags.
+  Auto-detects SITL binary. Launches via python.sh when using Isaac physics.
+
+- `tools/run_app_after_sitl.sh`
+  File mode change (644 → 755).
+
+- `libs/bullet_image_transport/src/bullet_image_transport/shm.py`
+  Added optional host_capture_ns parameter to FrameWriter.write() for
+  host-side capture timestamp passthrough from Isaac renderer.
