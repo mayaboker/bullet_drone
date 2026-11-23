@@ -3,6 +3,7 @@ from concurrent.futures import Future
 from contextlib import ExitStack
 from copy import deepcopy
 import json
+import struct
 from math import isfinite
 from queue import Queue, Empty, Full
 from threading import Thread, Event, Lock
@@ -66,15 +67,17 @@ class ZmqIo:
             raise RuntimeError(self.error or 'ZeroMQ startup timeout')
         return self
 
-    def publish(self, topic, value):
+    def publish(self, topic, value, *, published_ns=None):
         if not self.endpoints[0] or self.stop.is_set():
             raise RuntimeError('publisher is not available')
+        if published_ns is not None and (type(published_ns) is not int or not 0 < published_ns < 2**64):
+            raise ValueError('published_ns must be an unsigned Unix nanosecond timestamp')
         # Each topic has one replaceable snapshot; callers use a fixed topic set.
         snapshot = value if hasattr(value, 'to_dict') else deepcopy(value)
         with self.lock:
             if topic not in self.outgoing and len(self.outgoing) >= QUEUE_CAPACITY:
                 raise RuntimeError('publication topic capacity exceeded')
-            self.outgoing[topic] = snapshot
+            self.outgoing[topic] = snapshot, published_ns
 
     @staticmethod
     def _take(queue):
@@ -157,9 +160,11 @@ class ZmqIo:
                         with self.lock:
                             snapshots, self.outgoing = self.outgoing, {}
                         if pub:
-                            for topic, value in snapshots.items():
+                            for topic, (value, published_ns) in snapshots.items():
                                 try:
-                                    pub.send_multipart([topic, encode(value)], zmq.DONTWAIT)
+                                    parts = [topic, encode(value)] if published_ns is None else [
+                                        topic, struct.pack('<Q', published_ns), encode(value)]
+                                    pub.send_multipart(parts, zmq.DONTWAIT)
                                 except zmq.Again:
                                     pass
                         if req_ep and active is None:

@@ -35,13 +35,13 @@ Ctrl+C disarms and releases resources. No commands configure your physical hardw
 ## Coordinates: GPS degrees to local metres
 
 The entry point defines a synthetic geographic origin `(32°, 35°, 100 m MSL)`.
-World X is east, Y north and Z up. This places the terrain in a geographic frame;
+World X is north, Y west and Z up. This places the terrain in a geographic frame;
 it does not make the terrain a surveyed representation of those real locations.
 
-| Point | Latitude, degrees | Longitude, degrees | Local east/north, m |
+| Point | Latitude, degrees | Longitude, degrees | Local north/west, m |
 | --- | --- | --- | --- |
-| A | 31.998941979585357 | 35.001727163237504 | (163.205, −117.321) |
-| B | 32.00074562062305 | 34.998061181190316 | (−183.205, 82.679) |
+| A | 32.00147181690607 | 35.00124157696325 | (163.205, −117.321) |
+| B | 31.998347818990165 | 34.99912502124147 | (−183.205, 82.679) |
 
 [`GeographicFrame`](navigation.py) uses the same local tangent approximation as
 the simulated GPS. Let origin latitude/longitude be φ₀, λ₀, measured coordinates
@@ -58,6 +58,7 @@ N₀ = a / sqrt(c)                     prime-vertical radius
 E = N₀ cos(φ₀) wrap(λ − λ₀)
 N = M₀ (φ − φ₀)
 U = h − h₀
+world = (N, −E, U)
 ```
 
 `wrap` chooses the longitude difference in [−π, π). Radii are fixed at the
@@ -68,7 +69,7 @@ It is a local approximation, not a long-distance geodesic solver.
 MAVLink `GLOBAL_POSITION_INT` stores latitude/longitude in degrees × 10⁷,
 MSL altitude in millimetres and NED velocity in centimetres/second.
 [`Telemetry`](telemetry.py) divides by these scales and converts velocity:
-`(vE, vN, vU) = (vy, vx, −vz)/100`.
+`(vN, vW, vU) = (vx, −vy, −vz)/100`.
 Thus local U = 34.29 m means approximately 134.29 m MSL, **not** 34.29 m
 above the terrain. The controller operates in metres; logs retain global degrees.
 
@@ -94,9 +95,8 @@ Three quantities have different purposes:
 
 The logged distance includes lateral displacement from the route; it is not
 just remaining along-track distance. It approaches zero above B before descent.
-For example, the recorded latitude `31.9995629°`, longitude `35.0004652°`
-corresponds to about 262.30 m horizontally from B. Altitude is excluded from
-that log field. Speed is the magnitude of measured 3D velocity.
+Altitude is excluded from that log field. Speed is the magnitude of measured 3D velocity.
+Recordings created before the NWU migration retain their original ENU interpretation.
 
 ## LOS guidance: position to desired velocity
 
@@ -154,7 +154,7 @@ world yaw at zero and can fly sideways or backwards along the route.
 
 ```mermaid
 flowchart TD
-    GPS["MAVLink GPS position and velocity"] --> ENU["Convert degrees and NED to local ENU"]
+    GPS["MAVLink GPS position and velocity"] --> ENU["Convert degrees and NED to local NWU"]
     ENU --> LOS["LOS lookahead, braking and velocity ramp"]
     LOS --> VEL["Horizontal velocity controller"]
     ENU --> VEL
@@ -178,7 +178,7 @@ flowchart TD
 
 Read the diagram as nested loops:
 
-1. **Horizontal velocity:** desired minus measured ENU velocity feeds the
+1. **Horizontal velocity:** desired minus measured NWU velocity feeds the
    [`VelocityController`](../../src/bullet_drone/controllers/velocity.py).
    Per-axis PIDs produce acceleration in m/s², with proportional gain 2 s⁻¹
    and output limits of 1.5 m/s² per axis. Multiplying by mass produces force.
@@ -202,8 +202,8 @@ Read the diagram as nested loops:
 The caller-owned simulation/control loop runs at 240 Hz and uses the latest
 available position/attitude messages, configured at 20 Hz. These are different
 rates, not 240 fresh GPS measurements per second. MSP arm status is checked
-separately. MAVLink attitude roll/yaw match this pinned SITL frame, while its
-published pitch is negated. Its angular-rate fields are hardcoded zero and are
+separately. MAVLink attitude roll matches the NWU/FLU world convention; published pitch
+and yaw are negated when converting into that world. Its angular-rate fields are hardcoded zero and are
 not used by the outer attitude controller; Betaflight uses its own gyro internally.
 
 Only firmware MAVLink measurements enter navigation and attitude control.

@@ -18,7 +18,7 @@ LOG_TAIL_BYTES = 2000
 
 
 class SitlSession:
-    def __init__(self, binary, *, profile_path, extra_ports=()):
+    def __init__(self, binary, *, profile_path, extra_ports=(), gps_enabled=False):
         self.binary = Path(binary).resolve()
         self.profile_path = Path(profile_path).resolve()
         self.extra_ports = extra_ports
@@ -26,7 +26,7 @@ class SitlSession:
             raise ValueError(f'SITL binary missing or not executable: {self.binary}')
         if not self.profile_path.is_file():
             raise ValueError(f'SITL profile missing: {self.profile_path}')
-        validate_gps_firmware(self.binary, self.profile_path, gps_enabled=False)
+        validate_gps_firmware(self.binary, self.profile_path, gps_enabled=gps_enabled)
         self.process = self.work = self.log = None
 
     def __enter__(self):

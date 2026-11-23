@@ -9,6 +9,26 @@
      // Gazebo plugin doesn't fill pkt->pressure; derive from altitude using the
      // standard atmosphere model: P = 101325 * (1 - 2.25577e-5 * h)^5.25588
      const double altMeters = pkt->position_xyz[2];
+@@ -336,11 +336,19 @@
+     const float pktQx = pkt->imu_orientation_quat[1];
+     const float pktQy = -pkt->imu_orientation_quat[2];
+     const float pktQz = -pkt->imu_orientation_quat[3];
++#ifdef BULLET_GPS_FDM
++    // Bullet world and internal attitude are both NWU; undo wire signs only.
++    const float attQw = pktQw;
++    const float attQx = pktQx;
++    const float attQy = pktQy;
++    const float attQz = pktQz;
++#else
+     static const float k = 0.70710678f; // cos(π/4) = sin(π/4) = √2/2
+     const float attQw = k * (pktQw - pktQz);
+     const float attQx = k * (pktQx - pktQy);
+     const float attQy = k * (pktQy + pktQx);
+     const float attQz = k * (pktQz + pktQw);
++#endif
+ #else
+     // Legacy bridges send the body-to-world quaternion directly
+     const float attQw = pkt->imu_orientation_quat[0];
 @@ -408,12 +408,19 @@
  #endif
  
@@ -16,7 +36,7 @@
 +#ifdef BULLET_GPS_FDM
 +    static bool bulletGpsAnnounced = false;
 +    if (!bulletGpsAnnounced) {
-+        puts("BULLET_GPS_FDM_V1");
++        puts("BULLET_GPS_FDM_V2");
 +        bulletGpsAnnounced = true;
 +    }
 +#endif

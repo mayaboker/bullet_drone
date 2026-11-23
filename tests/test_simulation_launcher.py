@@ -38,6 +38,45 @@ def test_launcher_uses_mavlink_profile_and_reserves_uart2(monkeypatch):
         launcher.run(Options(render=False))
     assert captured['profile_path'] == Options().sitl_profile
     assert captured['extra_ports'] == (5762,)
+    assert captured['gps_enabled'] is False
+
+
+def test_launcher_gps_selects_matching_profile_and_sensor():
+    from launcher.cli import DEFAULT_SITL_GPS_PROFILE
+
+    options = CliParser().parse(['--gps', '--no-render'])
+    assert options.gps is True
+    assert options.sitl_profile == DEFAULT_SITL_GPS_PROFILE
+    config = launcher._simulation_config(options)
+    assert config.sensors.gps.enabled is True
+    assert config.sensors.gps.origin_altitude_m == launcher.GPS_ORIGIN_ALTITUDE_M
+
+
+def test_launcher_no_gps_keeps_coordinates_for_fdm():
+    options = CliParser().parse(['--no-gps', '--no-render'])
+    assert options.gps is False
+    assert launcher._simulation_config(options).sensors.gps.enabled is True
+
+
+def test_launcher_passes_gps_flag_to_sitl_session(monkeypatch):
+    captured = {}
+
+    class Session:
+        def __init__(self, binary, **kwargs):
+            captured.update(kwargs)
+
+        def __enter__(self):
+            raise RuntimeError('Stop after SITL setup')
+
+        def __exit__(self, *args):
+            pass
+
+    monkeypatch.setattr(launcher, 'SitlSession', Session)
+    options = CliParser().parse(['--gps', '--no-render'])
+    with pytest.raises(RuntimeError, match='Stop after SITL setup'):
+        launcher.run(options)
+    assert captured['gps_enabled'] is True
+    assert captured['profile_path'] == options.sitl_profile
 
 
 def test_launcher_requires_external_paths_when_checkout_assets_are_unavailable(monkeypatch):

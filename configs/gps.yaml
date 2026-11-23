@@ -11,7 +11,7 @@ simulation:
 drone:
   # Positive total vehicle mass in kg.
   mass_kg: 1.0
-  # Local east/north/up spawn in metres, independent of the geographic origin.
+  # Local north/west/up spawn in metres, independent of the geographic origin.
   initial_position_m: [0.0, 0.0, 1.0]
 control:
   # internal or betaflight; Betaflight GPS requires a compatible external firmware process.

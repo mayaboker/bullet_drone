@@ -413,7 +413,7 @@ inject `gps=GpsSensor(settings)` explicitly; `RcSimulation` constructs it when
 enabled. Readings carry episode, step and simulation time, geographic position,
 and `velocity_enu_m_s`. Disabled GPS returns `None`. GPS never changes ground truth.
 
-World X is east, Y north, Z up. Conversion uses WGS84 meridional and prime-vertical
+World X is north, Y west, Z up. GPS ENU vectors are `(-world_y, world_x, world_z)`. Conversion uses WGS84 meridional and prime-vertical
 curvature radii at the fixed origin: latitude adds north/radius, longitude adds
 east/(radius*cos(latitude)), and MSL altitude adds world Z. Longitude wraps across
 the dateline. This is a first-order tangent approximation, restricted to positions

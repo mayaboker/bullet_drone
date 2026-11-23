@@ -13,7 +13,9 @@ GPS_MIN_ALTITUDE_M = -21474836.48
 GPS_MAX_ALTITUDE_M = 21474836.47
 
 
-def pack_fdm(observation, *, gps_enabled=False):
+def pack_fdm(observation, *, gps_enabled=False, gps_coordinates_only=False):
+    if gps_enabled and gps_coordinates_only:
+        raise ValueError('GPS FDM modes are mutually exclusive')
     state = observation.ground_truth
     imu, barometer = observation.sensors.imu, observation.sensors.barometer
     if imu is None or barometer is None:
@@ -23,11 +25,11 @@ def pack_fdm(observation, *, gps_enabled=False):
                 state.episode_id, state.step_index, state.simulation_time_s):
             raise ValueError('FDM sensors must belong to the current observation')
     gps = observation.sensors.gps
-    if gps_enabled and gps is None:
-        raise ValueError('GPS-enabled FDM requires a GPS reading')
-    if gps is not None and not gps_enabled:
+    if (gps_enabled or gps_coordinates_only) and gps is None:
+        raise ValueError('GPS coordinates require a GPS reading')
+    if gps is not None and not (gps_enabled or gps_coordinates_only):
         raise ValueError('GPS reading requires explicitly enabled GPS FDM')
-    if gps_enabled:
+    if gps_enabled or gps_coordinates_only:
         if (gps.episode_id, gps.step_index, gps.simulation_time_s) != (
                 state.episode_id, state.step_index, state.simulation_time_s):
             raise ValueError('FDM GPS must belong to the current observation')
@@ -48,8 +50,9 @@ def pack_fdm(observation, *, gps_enabled=False):
         raise ValueError('Invalid FDM pressure')
     # Default upstream Gazebo ignores pressure, so encode it through position Z.
     altitude = (1.0 - (pressure / SEA_LEVEL_PRESSURE_PA) ** (1.0 / ATMOSPHERE_EXPONENT)) / ATMOSPHERE_ALTITUDE_FACTOR
-    position = (longitude, latitude, gps_altitude) if gps_enabled else (0.0, 0.0, altitude)
-    velocity = gps_velocity if gps_enabled else state.linear_velocity_m_s
+    position = (longitude, latitude, gps_altitude if gps_enabled else altitude) if gps is not None else (0.0, 0.0, altitude)
+    vn, vw, vu = state.linear_velocity_m_s
+    velocity = gps_velocity if gps_enabled else (-vw, vn, vu)
     values = (state.simulation_time_s, gx, -gy, -gz,
               *(-value for value in imu.specific_force_m_s2),
               w, x, -y, -z, *velocity, *position, pressure)

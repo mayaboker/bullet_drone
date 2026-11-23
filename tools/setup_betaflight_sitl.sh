@@ -62,7 +62,7 @@ if [[ ! -x "$binary" ]]; then
     echo "SITL build completed without $binary" >&2
     exit 1
 fi
-if $gps && ! LC_ALL=C grep -aq 'BULLET_GPS_FDM_V1' "$binary"; then
+if $gps && ! LC_ALL=C grep -aq 'BULLET_GPS_FDM_V2' "$binary"; then
     echo "GPS build is missing its compatibility marker" >&2
     exit 1
 fi

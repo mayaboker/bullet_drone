@@ -59,8 +59,8 @@ class Telemetry:
             raise RuntimeError('MAVLink GPS fix unavailable')
         position = self.latest['GLOBAL_POSITION_INT'][0]
         attitude = self.latest['ATTITUDE'][0]
-        # Pinned Gazebo/SITL telemetry matches world roll/yaw and negates world pitch.
-        rpy = attitude.roll, -attitude.pitch, attitude.yaw
+        # Pinned Gazebo/SITL telemetry maps FRD/NED into world FLU/NWU.
+        rpy = attitude.roll, -attitude.pitch, -attitude.yaw
         if not all(isfinite(v) for v in rpy):
             raise RuntimeError('Invalid MAVLink attitude')
         # ATTITUDE rates are hardcoded zero in pinned firmware, only orientation is consumed.
@@ -68,7 +68,7 @@ class Telemetry:
         geographic = (position.lat / GPS_DEGREES_SCALE, position.lon / GPS_DEGREES_SCALE,
                       position.alt / GPS_ALTITUDE_MM_PER_M)
         return Feedback(self.frame.local(*geographic),
-                        (position.vy / VELOCITY_CM_PER_M, position.vx / VELOCITY_CM_PER_M, -position.vz / VELOCITY_CM_PER_M), orientation, rpy[2], geographic)
+                        (position.vx / VELOCITY_CM_PER_M, -position.vy / VELOCITY_CM_PER_M, -position.vz / VELOCITY_CM_PER_M), orientation, rpy[2], geographic)
 
     def close(self):
         if self.connection is not None:

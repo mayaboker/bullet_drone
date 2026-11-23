@@ -21,7 +21,8 @@ from bullet_drone.rendering.config import CameraSettings, number
 QUEUE_CAPACITY = 1
 START_TIMEOUT_S = 15
 STOP_TIMEOUT_S = 5
-DEFAULT_PUBLISH_RATES_HZ = dict(camera_info=1., profile=1.)
+DEFAULT_PUBLISH_RATES_HZ = dict(camera_info=1., profile=1., ground_truth=30.)
+GROUND_TRUTH_TOPIC = b'analysis/physics/ground_truth'
 IDLE_POSE_REFRESH_HZ = 1.
 SCHEDULE_TOLERANCE_S = 1e-12
 WORKER_POLL_S = 0.002
@@ -76,6 +77,7 @@ class RenderPublisher:
         self.latest_pose = None
         self.latest_host_capture_ns = None
         self.latest_observation = None
+        self.latest_truth_published_ns = None
         self.observation_sequence = 0
         self.control_state = None
         self.contact_event = None
@@ -116,6 +118,7 @@ class RenderPublisher:
         host_capture_ns = time.monotonic_ns()
         with self.snapshot_lock:
             self.latest_observation = observation
+            self.latest_truth_published_ns = time.time_ns()
             self.observation_sequence += 1
             self.latest_pose = state
             self.latest_host_capture_ns = host_capture_ns
@@ -154,6 +157,9 @@ class RenderPublisher:
                 wire_sequence = 0
                 previous_state = None
                 feedback_sequence = -1
+                next_truth_time_s = 0.0
+                truth_episode = None
+                last_truth_step = None
                 self.ready.set()
                 while not self.stop.is_set():
                     if io.error:
@@ -170,6 +176,7 @@ class RenderPublisher:
                         latest_host_capture_ns = self.latest_host_capture_ns
                         source = self.latest_source
                         observation = self.latest_observation
+                        truth_published_ns = self.latest_truth_published_ns
                         observation_sequence = self.observation_sequence
                         contact_event = self.contact_event
                     if contact_event is not None and time.monotonic() >= next_contact:
@@ -179,6 +186,24 @@ class RenderPublisher:
                             and hasattr(observation, 'sensors')):
                         io.publish(FEEDBACK_TOPIC, from_observation(observation))
                         feedback_sequence = observation_sequence
+                    if observation is not None:
+                        truth = observation.ground_truth
+                        if truth.episode_id != truth_episode:
+                            truth_episode = truth.episode_id
+                            next_truth_time_s = 0.0
+                            last_truth_step = None
+                        if (truth.step_index != last_truth_step and
+                                truth.simulation_time_s + SCHEDULE_TOLERANCE_S >= next_truth_time_s):
+                            io.publish(GROUND_TRUTH_TOPIC, dict(
+                                schema_version=1, drone_id=truth.drone_id,
+                                episode_id=truth.episode_id, step_index=truth.step_index,
+                                simulation_time_s=truth.simulation_time_s,
+                                position_m=truth.position_m,
+                                linear_velocity_m_s=truth.linear_velocity_m_s),
+                                published_ns=truth_published_ns)
+                            last_truth_step = truth.step_index
+                            next_truth_time_s = (int((truth.simulation_time_s + SCHEDULE_TOLERANCE_S)
+                                                     * self.rates['ground_truth']) + 1) / self.rates['ground_truth']
                     now = time.monotonic()
                     changed = control_state != previous_state
                     previous_state = control_state

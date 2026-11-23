@@ -21,7 +21,7 @@ def receiver():
         'HEARTBEAT': (Message(), 10.),
         'GPS_RAW_INT': (Message(fix_type=3, satellites_visible=12), 10.),
         'GLOBAL_POSITION_INT': (Message(lat=320000000, lon=350000000, alt=110000, vx=100, vy=200, vz=-300), 10.),
-        # Captured pinned firmware signs: roll matches truth, pitch is negated, yaw matches truth.
+        # Captured pinned firmware signs: roll matches truth, pitch is negated, yaw is negated.
         'ATTITUDE': (Message(roll=.1, pitch=-.2, yaw=.3), 10.),
     }
     return value
@@ -31,9 +31,9 @@ def test_pinned_firmware_units_and_attitude_signs():
     feedback = receiver().feedback(10.1)
     assert feedback.geographic_position == pytest.approx((32., 35., 110.))
     assert feedback.position_m == pytest.approx((0., 0., 10.))
-    assert feedback.velocity_m_s == (2., 1., 3.)
-    assert feedback.attitude.orientation_xyzw == pytest.approx(from_rpy((.1, .2, .3)))
-    assert feedback.yaw_rad == .3
+    assert feedback.velocity_m_s == (1., -2., 3.)
+    assert feedback.attitude.orientation_xyzw == pytest.approx(from_rpy((.1, .2, -.3)))
+    assert feedback.yaw_rad == -.3
 
 
 @pytest.mark.parametrize('kind', ['HEARTBEAT', 'GPS_RAW_INT', 'GLOBAL_POSITION_INT', 'ATTITUDE'])
@@ -152,7 +152,7 @@ def test_rejected_firmware_profile_cleans_up(tmp_path, monkeypatch):
     from unittest.mock import MagicMock
     from examples.gps_point_to_point_mavlink import sitl
     binary = tmp_path / 'firmware'
-    binary.write_text("#!/bin/sh\n# BULLET_GPS_FDM_V1\necho '###ERROR IN set: INVALID NAME###'\n")
+    binary.write_text("#!/bin/sh\n# BULLET_GPS_FDM_V2\necho '###ERROR IN set: INVALID NAME###'\n")
     binary.chmod(0o755)
     monkeypatch.setattr(sitl.socket, 'socket', MagicMock())
     session = sitl.SitlSession(binary)

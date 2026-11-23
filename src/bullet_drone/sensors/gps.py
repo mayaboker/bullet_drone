@@ -1,4 +1,4 @@
-"""Ideal GPS in a fixed local east/north/up frame."""
+"""Ideal GPS in a North–West–Up world with standard geographic/ENU output."""
 from math import cos, degrees, hypot, isfinite, radians, sin, sqrt
 
 from bullet_drone.config import GpsSettings, _vector
@@ -35,8 +35,10 @@ class GpsSensor:
 
     def _read(self, state: DroneState) -> GpsReading:
         validate_state(state, self._previous)
-        east, north, up = _vector(state.position_m, 'gps.position_m')
-        velocity = _vector(state.linear_velocity_m_s, 'gps.velocity_enu_m_s')
+        north, west, up = _vector(state.position_m, 'gps.position_m')
+        east = -west
+        vn, vw, vu = _vector(state.linear_velocity_m_s, 'gps.world_velocity_m_s')
+        velocity = (-vw, vn, vu)
         # shortcut: fixed tangent approximation within 1 km, use geodesy for larger worlds.
         if hypot(east, north) > MAX_LOCAL_DISTANCE_M:
             raise ValueError('GPS local tangent model supports positions within 1 km of origin')

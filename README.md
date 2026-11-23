@@ -52,6 +52,14 @@ flowchart LR
 The simulation produces observations. The ExternalRenderer wrapper passes them
 to RenderPublisher, which selects position and attitude and sends JSON to Godot
 over ZeroMQ. Godot updates the drone and camera pose without importing Python.
+The same publisher sends `analysis/physics/ground_truth` on the telemetry
+endpoint (TCP port 5555 in the sample configuration) at 30 Hz. Each message
+has three ZeroMQ frames: topic, little-endian unsigned 64-bit Unix publish
+nanoseconds, and JSON containing episode/step identity, NWU position in metres,
+and NWU linear velocity in metres per second. MCAP Bagger records the payload
+as opaque bytes; Flight Lens plots the position and velocity from the recording.
+Set `publish_rates_hz.ground_truth` in `external_render/configs/physics.json`
+to change the sampling rate.
 
 
 ## Requirements
@@ -88,6 +96,8 @@ The drone takes off to 3 m, holds, then lands. Remove `--headless` for the PyBul
 viewer. The example owns its loop and cleanup; Ctrl+C releases resources.
 
 Start the external-controller launcher with `uv run --locked --all-packages --all-extras --all-groups launcher`. It starts one SITL and Godot by default; `--no-sitl` and `--no-render` disable either process. The SITL uses the MAVLink-enabled profile (UART2 TCP 5762) and leaves MSP TCP 5761 for a separate controller such as `bullet-app`.
+
+Pass `--gps` to enable the ideal virtual GPS sensor, use the matching `betaflight-mavlink-gps.config` profile, and encode GPS readings in the FDM stream. The GPS profile sets `altitude_source = BARO_ONLY`, so the firmware's altitude estimate uses barometer measurements while raw GPS telemetry remains available. Simulation world axes are North–West–Up; GPS output converts to geographic coordinates and ENU velocity. The synthetic world origin is latitude 0°, longitude 0°, altitude 100 m MSL. The matching GPS-capable SITL binary is required. With `--no-gps`, the SITL launcher still samples synthetic coordinates and puts longitude/latitude in FDM position X/Y for testing. Betaflight GPS stays disabled, while position Z carries barometer-derived altitude. The Bullet NG mission stacks use `--no-gps`.
 
 The installed wheel includes the `launcher` command and its Python supervision code. It does not include the Betaflight executable, Godot renderer, or their configuration files. When running outside this checkout, supply `--sitl-binary`, `--sitl-profile`, `--renderer`, and `--render-config` with the paths to those separate installs. Paths for a disabled component are optional; `launcher --no-sitl --no-render` runs only the simulation loop.
 

@@ -17,6 +17,7 @@ def _checkout_asset(relative_path: str) -> Path | None:
 
 DEFAULT_SITL_BINARY = _checkout_asset('bin/betaflight_mavlink_gps_SITL.elf')
 DEFAULT_SITL_PROFILE = _checkout_asset('configs/betaflight-mavlink.config')
+DEFAULT_SITL_GPS_PROFILE = _checkout_asset('configs/betaflight-mavlink-gps.config')
 DEFAULT_RENDER_CONFIG = _checkout_asset('external_render/configs/physics.json')
 DEFAULT_RENDERER = _checkout_asset('external_render/dist/linux-x86_64/render')
 
@@ -32,6 +33,7 @@ class Options:
     target_scene: bool = False
     render_monitor: str | None = None
     render_half: str | None = None
+    gps: bool = False
 
 
 class CliParser:
@@ -40,8 +42,9 @@ class CliParser:
         @click.option('--sitl/--no-sitl', default=True, help='Start Betaflight SITL (external controller owns MSP).')
         @click.option('--render/--no-render', default=True, help='Start the Godot renderer.')
         @click.option('--sitl-binary', type=click.Path(dir_okay=False, path_type=Path), default=DEFAULT_SITL_BINARY)
-        @click.option('--sitl-profile', type=click.Path(exists=True, dir_okay=False, path_type=Path),
-                      default=DEFAULT_SITL_PROFILE)
+        @click.option('--sitl-profile', type=click.Path(exists=True, dir_okay=False, path_type=Path))
+        @click.option('--gps/--no-gps', default=False,
+                      help='Enable Betaflight virtual GPS; --no-gps still sends test latitude/longitude in FDM.')
         @click.option('--render-config', type=click.Path(exists=True, dir_okay=False, path_type=Path),
                       default=DEFAULT_RENDER_CONFIG)
         @click.option('--renderer', type=click.Path(dir_okay=False, path_type=Path), default=DEFAULT_RENDERER)
@@ -49,9 +52,11 @@ class CliParser:
         @click.option('--render-monitor', help='XRandR monitor name for the Godot window (e.g. DP-1-0).')
         @click.option('--render-half', type=click.Choice(['top', 'bottom']),
                       help='Use the top or bottom half of --render-monitor.')
-        def command(sitl, render, sitl_binary, sitl_profile, render_config, renderer, target_scene, render_monitor,
-                    render_half):
+        def command(sitl, render, sitl_binary, sitl_profile, gps, render_config, renderer, target_scene,
+                    render_monitor, render_half):
             """Run a persistent PyBullet simulation with optional SITL and rendering."""
+            if sitl_profile is None:
+                sitl_profile = DEFAULT_SITL_GPS_PROFILE if gps else DEFAULT_SITL_PROFILE
             if target_scene and (not sitl or not render):
                 raise click.UsageError('--target-scene requires --sitl and --render')
             if render_half and not render_monitor:
@@ -61,6 +66,6 @@ class CliParser:
             if render and (renderer is None or render_config is None):
                 raise click.UsageError('Rendering requires --renderer and --render-config')
             return Options(sitl, render, sitl_binary, sitl_profile, render_config, renderer, target_scene,
-                           render_monitor, render_half)
+                           render_monitor, render_half, gps)
 
         return command.main(args=argv, prog_name='launcher', standalone_mode=False)
