@@ -209,7 +209,7 @@ class FrameWriter:
             self.close()
             raise
 
-    def write(self, topic, pixels, capture_ns=None, *, source=None, header=None, drone_id=None):
+    def write(self, topic, pixels, capture_ns=None, *, source=None, header=None, drone_id=None, host_capture_ns=None):
         if not self.slots:
             raise RuntimeError('SHM writer is closed')
         if len(pixels) != self.layout['bytes']:
@@ -231,6 +231,8 @@ class FrameWriter:
                     if source is not None:
                         raise ValueError('pose header and legacy source are exclusive')
                     metadata.update(version=3, header=header, drone_id=drone_id)
+                    if host_capture_ns is not None:
+                        metadata['host_capture_ns'] = host_capture_ns
                 if source is not None:
                     metadata.update(version=2, source=dict(source))
                 message = encode_descriptor(topic, metadata)

@@ -29,38 +29,55 @@ class Options:
     sitl_profile: Path | None = DEFAULT_SITL_PROFILE
     render_config: Path | None = DEFAULT_RENDER_CONFIG
     renderer: Path | None = DEFAULT_RENDERER
+    renderer_backend: str = 'godot'
+    physics_backend: str = 'pybullet'
     target_scene: bool = False
     render_monitor: str | None = None
     render_half: str | None = None
+    isaac_headless: bool = False
+    world: Path | None = None
 
 
 class CliParser:
     def parse(self, argv: Sequence[str] | None = None) -> Options | int:
         @click.command()
         @click.option('--sitl/--no-sitl', default=True, help='Start Betaflight SITL (external controller owns MSP).')
-        @click.option('--render/--no-render', default=True, help='Start the Godot renderer.')
+        @click.option('--render/--no-render', default=True, help='Start a renderer.')
         @click.option('--sitl-binary', type=click.Path(dir_okay=False, path_type=Path), default=DEFAULT_SITL_BINARY)
         @click.option('--sitl-profile', type=click.Path(exists=True, dir_okay=False, path_type=Path),
                       default=DEFAULT_SITL_PROFILE)
         @click.option('--render-config', type=click.Path(exists=True, dir_okay=False, path_type=Path),
                       default=DEFAULT_RENDER_CONFIG)
         @click.option('--renderer', type=click.Path(dir_okay=False, path_type=Path), default=DEFAULT_RENDERER)
+        @click.option('--renderer-backend', type=click.Choice(['godot', 'isaac']), default='godot',
+                      help='Rendering backend: godot (default) or isaac (Isaac Sim 6.2).')
+        @click.option('--physics-backend', type=click.Choice(['pybullet', 'isaac']), default='pybullet',
+                      help='Physics engine: pybullet (default) or isaac (Isaac Sim PhysX, headless).')
         @click.option('--target-scene', is_flag=True, help='Enable the red-truck physics collider and contact event.')
         @click.option('--render-monitor', help='XRandR monitor name for the Godot window (e.g. DP-1-0).')
         @click.option('--render-half', type=click.Choice(['top', 'bottom']),
                       help='Use the top or bottom half of --render-monitor.')
-        def command(sitl, render, sitl_binary, sitl_profile, render_config, renderer, target_scene, render_monitor,
-                    render_half):
-            """Run a persistent PyBullet simulation with optional SITL and rendering."""
+        @click.option('--isaac-headless', is_flag=True, help='Run Isaac Sim without a GUI window.')
+        @click.option('--world', type=click.Path(exists=True, dir_okay=False, path_type=Path),
+                      help='USD world file for Isaac renderer.')
+        def command(sitl, render, sitl_binary, sitl_profile, render_config, renderer, renderer_backend,
+                    physics_backend, target_scene, render_monitor, render_half, isaac_headless, world):
+            """Run a drone simulation with optional SITL and rendering."""
             if target_scene and (not sitl or not render):
                 raise click.UsageError('--target-scene requires --sitl and --render')
             if render_half and not render_monitor:
                 raise click.UsageError('--render-half requires --render-monitor')
             if sitl and (sitl_binary is None or sitl_profile is None):
                 raise click.UsageError('SITL requires --sitl-binary and --sitl-profile')
-            if render and (renderer is None or render_config is None):
-                raise click.UsageError('Rendering requires --renderer and --render-config')
-            return Options(sitl, render, sitl_binary, sitl_profile, render_config, renderer, target_scene,
-                           render_monitor, render_half)
+            if render and renderer_backend == 'godot' and (renderer is None or render_config is None):
+                raise click.UsageError('Godot rendering requires --renderer and --render-config')
+            if render and renderer_backend == 'isaac' and render_config is None:
+                raise click.UsageError('Isaac rendering requires --render-config')
+            if isaac_headless and renderer_backend != 'isaac':
+                raise click.UsageError('--isaac-headless requires --renderer-backend isaac')
+            if world and renderer_backend != 'isaac':
+                raise click.UsageError('--world requires --renderer-backend isaac')
+            return Options(sitl, render, sitl_binary, sitl_profile, render_config, renderer, renderer_backend,
+                           physics_backend, target_scene, render_monitor, render_half, isaac_headless, world)
 
         return command.main(args=argv, prog_name='launcher', standalone_mode=False)

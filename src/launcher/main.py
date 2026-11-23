@@ -1,6 +1,8 @@
-"""Supervise a persistent PyBullet loop and optional external processes."""
+"""Supervise a persistent physics loop and optional external processes."""
 from collections.abc import Sequence
 from contextlib import ExitStack
+import os
+import select
 import sys
 import time
 
@@ -34,17 +36,29 @@ def run(options):
                                                      extra_ports=(MAVLINK_PORT,)))
         viewer = None
         if options.render:
-            from launcher.renderer import ExternalRenderer
-            viewer = resources.enter_context(ExternalRenderer(
-                options.renderer, options.render_config, profile_name='Simulation Launcher',
-                backend='betaflight' if options.sitl else 'internal',
-                window_monitor=options.render_monitor, window_half=options.render_half))
+            backend_label = 'betaflight' if options.sitl else 'internal'
+            if options.renderer_backend == 'isaac':
+                from launcher.isaac_renderer import IsaacRenderer
+                viewer = resources.enter_context(IsaacRenderer(
+                    options.render_config, profile_name='Simulation Launcher',
+                    backend=backend_label, headless=options.isaac_headless,
+                    world=options.world))
+            else:
+                from launcher.renderer import ExternalRenderer
+                viewer = resources.enter_context(ExternalRenderer(
+                    options.renderer, options.render_config, profile_name='Simulation Launcher',
+                    backend=backend_label,
+                    window_monitor=options.render_monitor, window_half=options.render_half))
         vehicle = load_racer_parameters()
         config = SimulationConfig(SimulationSettings(TIMESTEP_S, MAX_SIMULATION_STEPS,
                                                      GRAVITY_VECTOR_M_S2, gui=False),
                                   DroneSettings(1.0, INITIAL_POSITION_M),
                                   control=ControlSettings('betaflight' if options.sitl else 'internal'))
-        physics = PyBulletPhysics(config, vehicle, target_scene=options.target_scene)
+        if options.physics_backend == 'isaac':
+            from bullet_drone.isaac_physics import IsaacPhysics
+            physics = IsaacPhysics(config, vehicle)
+        else:
+            physics = PyBulletPhysics(config, vehicle, target_scene=options.target_scene)
         resources.callback(physics.close)
         environment = DroneEnvironment(
             physics, imu=ImuSensor(GRAVITY_VECTOR_M_S2, config.sensors.imu, sample_period_s=TIMESTEP_S),
@@ -59,7 +73,31 @@ def run(options):
         ready = False
         contact_published = False
         next_step = time.monotonic()
+        stdin_fd = sys.stdin.fileno() if sys.stdin.isatty() else -1
+        if stdin_fd >= 0:
+            os.set_blocking(stdin_fd, False)
+            logger.info('Type "reset" + Enter to reset the scene without restarting')
+        stdin_buf = ''
         while True:
+            if stdin_fd >= 0 and select.select([stdin_fd], [], [], 0)[0]:
+                chunk = os.read(stdin_fd, 256)
+                if chunk:
+                    stdin_buf += chunk.decode(errors='replace')
+                while '\n' in stdin_buf:
+                    line, stdin_buf = stdin_buf.split('\n', 1)
+                    command = line.strip()
+                    if command == 'reset':
+                        logger.info('Resetting scene')
+                        observation = environment.reset()
+                        if backend is not None:
+                            backend.reset(observation)
+                        contact_published = False
+                        if viewer:
+                            viewer.consume(observation)
+                        next_step = time.monotonic() + TIMESTEP_S
+                        logger.info('Scene reset complete')
+                    elif command:
+                        logger.warning('Unknown command: {}', command)
             if options.sitl:
                 sitl.check_running()
             if viewer:
