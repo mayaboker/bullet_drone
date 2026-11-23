@@ -18,7 +18,7 @@ kill_pattern() {
 # Isaac Sim renderer (python.sh running isaac/main.py)
 kill_pattern 'isaac/main\.py'
 kill_pattern 'isaacsim'
-kill_pattern 'omni\.'
+kill_pattern 'omni\.kit'
 
 # Betaflight SITL
 kill_pattern 'betaflight.*SITL'
