@@ -1,5 +1,13 @@
 # Release Log — alice branch (changes from 0.1-alpha)
 
+## 0.2-alice (changes from 0.1-alice)
+
+- `tools/isaacSimKillAll.bash`
+  Fixed omni kill pattern (`omni\.` → `omni\.kit`) to avoid killing Firefox
+  processes that use `-greomni`/`-appomni` flags.
+
+## 0.1-alice (changes from 0.1-alpha)
+
 ## bullet_drone
 
 2 commits, 9 files changed, +724 / -18 lines.
