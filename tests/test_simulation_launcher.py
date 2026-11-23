@@ -18,6 +18,19 @@ def test_target_spawn_config_rotates_at_original_position(tmp_path):
     assert config.drone.initial_yaw_rad == pytest.approx(1.5707963267948966)
 
 
+def test_isaac_backends_keep_target_spawn_and_control_options(tmp_path):
+    path = tmp_path / 'target.yaml'
+    path.write_text('initial_position_m: [0, 0, 0.015]\ninitial_yaw_deg: 90\n')
+    options = CliParser().parse([
+        '--renderer-backend', 'isaac', '--physics-backend', 'isaac',
+        '--target-scene', '--target-spawn-config', str(path), '--isaac-headless',
+    ])
+    assert options.renderer_backend == options.physics_backend == 'isaac'
+    assert options.isaac_headless
+    assert launcher._simulation_config(options).drone.initial_yaw_rad == pytest.approx(1.5707963267948966)
+    assert options.simulation_control_endpoint == Options().simulation_control_endpoint
+
+
 def test_target_spawn_config_rejects_bad_yaw_and_non_target_scene(tmp_path):
     path = tmp_path / 'target.yaml'
     path.write_text('initial_position_m: [0, 0, 0.015]\ninitial_yaw_deg: nan\n')

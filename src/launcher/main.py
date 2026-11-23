@@ -1,4 +1,4 @@
-"""Supervise a persistent PyBullet loop and optional external processes."""
+"""Supervise a persistent physics loop and optional external processes."""
 from collections.abc import Sequence
 from contextlib import ExitStack
 from functools import partial
@@ -100,14 +100,27 @@ def run(options):
             open_sitl()
         viewer = None
         if options.render:
-            from launcher.renderer import ExternalRenderer
-            viewer = resources.enter_context(ExternalRenderer(
-                options.renderer, options.render_config, profile_name='Simulation Launcher',
-                backend='betaflight' if options.sitl else 'internal',
-                window_monitor=options.render_monitor, window_half=options.render_half))
+            backend_label = 'betaflight' if options.sitl else 'internal'
+            if options.renderer_backend == 'isaac':
+                from launcher.isaac_renderer import IsaacRenderer
+                viewer = resources.enter_context(IsaacRenderer(
+                    options.render_config, profile_name='Simulation Launcher',
+                    backend=backend_label, headless=options.isaac_headless,
+                    world=options.world))
+            else:
+                from launcher.renderer import ExternalRenderer
+                viewer = resources.enter_context(ExternalRenderer(
+                    options.renderer, options.render_config, profile_name='Simulation Launcher',
+                    backend=backend_label,
+                    window_monitor=options.render_monitor, window_half=options.render_half))
         vehicle = load_racer_parameters()
         config = _simulation_config(options)
-        physics = PyBulletPhysics(config, vehicle, target_scene=options.target_scene)
+        config = _simulation_config(options)
+        if options.physics_backend == 'isaac':
+            from bullet_drone.isaac_physics import IsaacPhysics
+            physics = IsaacPhysics(config, vehicle)
+        else:
+            physics = PyBulletPhysics(config, vehicle, target_scene=options.target_scene)
         resources.callback(physics.close)
         environment = DroneEnvironment(
             physics, imu=ImuSensor(GRAVITY_VECTOR_M_S2, config.sensors.imu, sample_period_s=TIMESTEP_S),

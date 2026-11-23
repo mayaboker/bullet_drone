@@ -35,6 +35,7 @@ documents referenced in repository guidance. This menu documents the current
 library interfaces rather than reconstructing those missing records.
 
 - [External renderer interface](external-render-interface.md): process ownership, configuration, ZeroMQ topics, pose/image data, readiness, and cleanup.
+- [Optional Isaac backend](isaac-backend.md): backend selection and integration with launcher simulation control.
 - [Godot / ZeroMQ camera](zmq-rendering.md): Godot Start/Stop/Reset, physics-paced poses, TCP signaling and local SHM images.
 
 

@@ -32,19 +32,23 @@ class Options:
     sitl_profile: Path | None = DEFAULT_SITL_PROFILE
     render_config: Path | None = DEFAULT_RENDER_CONFIG
     renderer: Path | None = DEFAULT_RENDERER
+    renderer_backend: str = 'godot'
+    physics_backend: str = 'pybullet'
     target_scene: bool = False
     target_spawn_config: Path | None = None
     render_monitor: str | None = None
     render_half: str | None = None
     gps: bool = False
     simulation_control_endpoint: str = DEFAULT_CONTROL_ENDPOINT
+    isaac_headless: bool = False
+    world: Path | None = None
 
 
 class CliParser:
     def parse(self, argv: Sequence[str] | None = None) -> Options | int:
         @click.command()
         @click.option('--sitl/--no-sitl', default=True, help='Start Betaflight SITL (external controller owns MSP).')
-        @click.option('--render/--no-render', default=True, help='Start the Godot renderer.')
+        @click.option('--render/--no-render', default=True, help='Start a renderer.')
         @click.option('--sitl-binary', type=click.Path(dir_okay=False, path_type=Path), default=DEFAULT_SITL_BINARY)
         @click.option('--sitl-profile', type=click.Path(exists=True, dir_okay=False, path_type=Path))
         @click.option('--gps/--no-gps', default=False,
@@ -52,6 +56,10 @@ class CliParser:
         @click.option('--render-config', type=click.Path(exists=True, dir_okay=False, path_type=Path),
                       default=DEFAULT_RENDER_CONFIG)
         @click.option('--renderer', type=click.Path(dir_okay=False, path_type=Path), default=DEFAULT_RENDERER)
+        @click.option('--renderer-backend', type=click.Choice(['godot', 'isaac']), default='godot',
+                      help='Rendering backend: godot (default) or isaac (Isaac Sim 6.2).')
+        @click.option('--physics-backend', type=click.Choice(['pybullet', 'isaac']), default='pybullet',
+                      help='Physics engine: pybullet (default) or isaac (Isaac Sim PhysX, headless).')
         @click.option('--target-scene', is_flag=True, help='Enable the red-truck physics collider and contact event.')
         @click.option('--target-spawn-config', type=click.Path(exists=True, dir_okay=False, path_type=Path),
                       help='YAML initial position and yaw for the target-scene drone.')
@@ -60,9 +68,13 @@ class CliParser:
                       help='Use the top or bottom half of --render-monitor.')
         @click.option('--simulation-control-endpoint', default=DEFAULT_CONTROL_ENDPOINT,
                       help='Loopback ZeroMQ simulation command endpoint.')
-        def command(sitl, render, sitl_binary, sitl_profile, gps, render_config, renderer, target_scene,
-                    target_spawn_config, render_monitor, render_half, simulation_control_endpoint):
-            """Run a persistent PyBullet simulation with optional SITL and rendering."""
+        @click.option('--isaac-headless', is_flag=True, help='Run Isaac Sim without a GUI window.')
+        @click.option('--world', type=click.Path(exists=True, dir_okay=False, path_type=Path),
+                      help='USD world file for Isaac renderer.')
+        def command(sitl, render, sitl_binary, sitl_profile, gps, render_config, renderer, renderer_backend,
+                    physics_backend, target_scene, target_spawn_config, render_monitor, render_half,
+                    simulation_control_endpoint, isaac_headless, world):
+            """Run a drone simulation with optional SITL and rendering."""
             if sitl_profile is None:
                 sitl_profile = DEFAULT_SITL_GPS_PROFILE if gps else DEFAULT_SITL_PROFILE
             if target_scene and (not sitl or not render):
@@ -73,8 +85,14 @@ class CliParser:
                 raise click.UsageError('--render-half requires --render-monitor')
             if sitl and (sitl_binary is None or sitl_profile is None):
                 raise click.UsageError('SITL requires --sitl-binary and --sitl-profile')
-            if render and (renderer is None or render_config is None):
-                raise click.UsageError('Rendering requires --renderer and --render-config')
+            if render and renderer_backend == 'godot' and (renderer is None or render_config is None):
+                raise click.UsageError('Godot rendering requires --renderer and --render-config')
+            if render and renderer_backend == 'isaac' and render_config is None:
+                raise click.UsageError('Isaac rendering requires --render-config')
+            if isaac_headless and renderer_backend != 'isaac':
+                raise click.UsageError('--isaac-headless requires --renderer-backend isaac')
+            if world and renderer_backend != 'isaac':
+                raise click.UsageError('--world requires --renderer-backend isaac')
             try:
                 validate_endpoint(simulation_control_endpoint)
             except ValueError as error:
@@ -83,6 +101,8 @@ class CliParser:
                            render_config=render_config, renderer=renderer, target_scene=target_scene,
                            target_spawn_config=target_spawn_config, render_monitor=render_monitor,
                            render_half=render_half, gps=gps,
-                           simulation_control_endpoint=simulation_control_endpoint)
+                           simulation_control_endpoint=simulation_control_endpoint,
+                           renderer_backend=renderer_backend, physics_backend=physics_backend,
+                           isaac_headless=isaac_headless, world=world)
 
         return command.main(args=argv, prog_name='launcher', standalone_mode=False)
