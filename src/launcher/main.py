@@ -2,7 +2,9 @@
 from collections.abc import Sequence
 from contextlib import ExitStack
 from functools import partial
+import json
 import os
+from pathlib import Path
 import select
 import socket
 import sys
@@ -115,7 +117,19 @@ def run(options):
         config = _simulation_config(options)
         if options.physics_backend == 'isaac':
             from bullet_drone.isaac_physics import IsaacPhysics
-            physics = IsaacPhysics(config, vehicle)
+            target_pos = None
+            if options.target_scene and options.world:
+                import json
+                presets_path = Path(__file__).resolve().parents[2] / '..' / 'bullet_render' / 'isaac' / 'world_presets.json'
+                if presets_path.is_file():
+                    preset = json.loads(presets_path.read_text()).get(options.world.name, {})
+                    target_m = preset.get('target_m')
+                    spawn_m = preset.get('spawn_m', [0, 0, 0])
+                    if target_m:
+                        target_pos = (target_m[0] - spawn_m[0],
+                                      target_m[1] - spawn_m[1],
+                                      0.0)
+            physics = IsaacPhysics(config, vehicle, target_position_m=target_pos)
         else:
             physics = PyBulletPhysics(config, vehicle, target_scene=options.target_scene)
         resources.callback(physics.close)
@@ -170,6 +184,27 @@ def run(options):
             logger.info('Type "reset" + Enter to reset the scene without restarting')
         stdin_buf = ''
         while True:
+            if stdin_fd >= 0 and select.select([stdin_fd], [], [], 0)[0]:
+                chunk = os.read(stdin_fd, 256)
+                if chunk:
+                    stdin_buf += chunk.decode(errors='replace')
+                while '\n' in stdin_buf:
+                    line, stdin_buf = stdin_buf.split('\n', 1)
+                    command = line.strip()
+                    if command == 'reset':
+                        logger.info('Resetting simulation from stdin')
+                        control._transition('resetting')
+                        try:
+                            observation = reset_simulation()
+                        except Exception:
+                            control._transition('error')
+                            raise
+                        control._transition('running', observation)
+                        ready = False
+                        next_step = time.monotonic() + TIMESTEP_S
+                        logger.info('Reset complete, running')
+                    elif command:
+                        logger.warning('Unknown command: {}', command)
             if sitl is not None and control.state == 'running':
                 sitl.check_running()
             if viewer:

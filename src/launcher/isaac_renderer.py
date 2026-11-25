@@ -15,7 +15,7 @@ from launcher.publisher import RenderPublisher
 
 
 IMAGE_TOPIC = 'camera/front/image'
-STARTUP_TIMEOUT_S = 180.0
+STARTUP_TIMEOUT_S = 360.0
 SHUTDOWN_TIMEOUT_S = 5.0
 POLL_TIMEOUT_MS = 50
 SHM_DIRECTORY = Path('/dev/shm')

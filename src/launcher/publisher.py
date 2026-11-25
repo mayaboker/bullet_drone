@@ -11,7 +11,8 @@ import time
 from loguru import logger
 from bullet_drone.config import ConfigurationError, PoseSources
 from bullet_drone.pose import resolve_pose
-from bullet_simulation_protocol.pose import PoseMessage, POSE_TOPIC
+from bullet_simulation_protocol.pose import PoseMessage, PoseHeader, POSE_TOPIC
+from bullet_simulation_protocol.feedback import TimeStamp
 from bullet_simulation_protocol.flight import FEEDBACK_TOPIC
 from bullet_simulation_protocol.scenario import TARGET_CONTACT_TOPIC
 from bullet_simulation_protocol.state import STATE_TOPIC, SimulationState
@@ -237,7 +238,10 @@ class RenderPublisher:
                         next_idle_pose = now + 1 / IDLE_POSE_REFRESH_HZ
                     sequence = wire_sequence
                     wire_sequence += 1
-                    io.publish(POSE_TOPIC, PoseMessage.from_state(state, host_capture_ns))
+                    header = PoseHeader(sequence, TimeStamp.from_seconds(state.simulation_time_s))
+                    pose = PoseMessage(header, state.drone_id, state.position_m,
+                                       state.orientation_xyzw, host_capture_ns)
+                    io.publish(POSE_TOPIC, pose)
         except Exception as exc:
             self.error = f'ZeroMQ render publisher failed: {exc}'
             logger.error(self.error)

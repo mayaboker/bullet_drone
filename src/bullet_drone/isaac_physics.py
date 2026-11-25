@@ -15,6 +15,52 @@ from bullet_drone.vehicle import VehicleParameters, load_racer_parameters
 
 ROTOR_COUNT = 4
 VECTOR_COMPONENTS = 3
+DRONE_RADIUS_M = 0.42
+_TRUCK_PARTS = (
+    ((0, 0, 2.1), (4.2, 2.4, 2.2)),     # Cargo
+    ((3.05, 0, 1.9), (1.8, 2.3, 2.0)),   # Cab
+    ((1, 0, 0.85), (6, 2.2, 0.35)),       # Chassis
+)
+
+
+def _truck_bounds(position):
+    return [(tuple(position[i] + c[i] - s[i] / 2 for i in range(3)),
+             tuple(position[i] + c[i] + s[i] / 2 for i in range(3)))
+            for c, s in _TRUCK_PARTS]
+
+
+def _sphere_sweep(start, finish, bounds, radius=DRONE_RADIUS_M):
+    """Earliest exact sphere/AABB contact along the start→finish segment."""
+    delta = tuple(b - a for a, b in zip(start, finish))
+    lower, upper = bounds
+    cuts = {0.0, 1.0}
+    for i in range(3):
+        if delta[i]:
+            for edge in (lower[i], upper[i]):
+                t = (edge - start[i]) / delta[i]
+                if 0 < t < 1:
+                    cuts.add(t)
+    cuts = sorted(cuts)
+    for lo, hi in zip(cuts, cuts[1:]):
+        midpoint = (lo + hi) / 2
+        a = b = 0.0
+        c = -radius * radius
+        for i in range(3):
+            p = start[i] + delta[i] * midpoint
+            edge = lower[i] if p < lower[i] else upper[i] if p > upper[i] else None
+            if edge is not None:
+                offset = start[i] - edge
+                a += delta[i] ** 2
+                b += 2 * delta[i] * offset
+                c += offset ** 2
+        if a * lo * lo + b * lo + c <= 1e-12:
+            return True
+        discriminant = b * b - 4 * a * c
+        if a and discriminant >= 0:
+            root = (-b - math.sqrt(discriminant)) / (2 * a)
+            if lo <= root <= hi:
+                return True
+    return False
 
 _shared_app = None
 _shared_interfaces = None
@@ -34,7 +80,8 @@ def _body_to_world(vector, quat_xyzw):
 
 class IsaacPhysics:
     def __init__(self, config: SimulationConfig, vehicle: VehicleParameters | None = None, *,
-                 motor_dynamics: MotorDynamics | None = None, propeller_model: PropellerModel | None = None) -> None:
+                 motor_dynamics: MotorDynamics | None = None, propeller_model: PropellerModel | None = None,
+                 target_position_m: tuple[float, float, float] | None = None) -> None:
         self._config = config
         self._vehicle = vehicle if vehicle is not None else load_racer_parameters()
         self._motors = motor_dynamics if motor_dynamics is not None else IdealMotorDynamics(self._vehicle.max_speed_rad_s)
@@ -49,6 +96,8 @@ class IsaacPhysics:
         self._episode_id = ""
         self._step_index = 0
         self._sim_iface = None
+        self._target_bounds = _truck_bounds(target_position_m) if target_position_m else None
+        self._prev_position = None
         self._scene_query = None
         self._stage_id = None
         self._body_path_int = None
@@ -164,6 +213,7 @@ class IsaacPhysics:
 
             self._episode_id = str(uuid4())
             self._step_index = 0
+            self._prev_position = None
             self._rotor_speeds = self._validated_speeds(self._motors.reset(), 1)
             if any(self._rotor_speeds):
                 raise BackendError("Motor reset must return stopped rotors")
@@ -368,7 +418,13 @@ class IsaacPhysics:
         return SurfaceHit(distance, (float(normal[0]), float(normal[1]), float(normal[2])))
 
     def target_contact(self) -> bool:
-        return False
+        if self._target_bounds is None:
+            return False
+        pos = self._state().position_m
+        start = self._prev_position if self._prev_position is not None else pos
+        self._prev_position = pos
+        return any(_sphere_sweep(start, pos, bounds)
+                   for bounds in self._target_bounds)
 
     def terrain_contact(self) -> bool:
         return False
