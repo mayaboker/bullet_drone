@@ -1,0 +1,5 @@
+{
+  "telemetry_endpoint": "tcp://0.0.0.0:5555",
+  "image_endpoint": "tcp://0.0.0.0:5556",
+  "control_endpoint": "tcp://0.0.0.0:5557"
+}
